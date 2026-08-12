@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+logs/
+market_data.db
+config.json
+.vscode/
+.pytest_cache/
