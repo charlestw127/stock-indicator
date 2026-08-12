@@ -1,7 +1,8 @@
 /**
  * Recommended portfolio card: fetches /api/recommendation and renders the
- * suggested holdings, portfolio-level risk, changes since the last
- * recommendation, and the diff against the user's actual positions.
+ * suggested holdings with dollar/share targets, portfolio-level risk,
+ * changes since the last recommendation, and a concrete rebalance plan
+ * against the user's actual positions.
  */
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -10,11 +11,17 @@ document.addEventListener('DOMContentLoaded', function () {
     const refreshButton = document.getElementById('refresh-recommendation-button');
     if (!area) return;
 
-    const fmt = (v, d = 2) => (v === null || v === undefined || isNaN(v)) ? '–' : Number(v).toFixed(d);
+    let currentBase = null; // user override, null = size off the portfolio
 
-    async function loadRecommendation() {
+    const fmt = (v, d = 2) => (v === null || v === undefined || isNaN(v)) ? '–' : Number(v).toFixed(d);
+    const money = (v) => (v === null || v === undefined || isNaN(v)) ? '–'
+        : '$' + Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 });
+
+    async function loadRecommendation(base) {
+        if (base !== undefined) currentBase = base;
         try {
-            const response = await fetch('/api/recommendation');
+            const url = currentBase ? `/api/recommendation?base=${currentBase}` : '/api/recommendation';
+            const response = await fetch(url);
             if (!response.ok) {
                 throw new Error(`Server error: ${response.statusText}`);
             }
@@ -23,6 +30,21 @@ document.addEventListener('DOMContentLoaded', function () {
             console.error('Recommendation load failed:', error);
             area.innerHTML = `<div class="alert alert-warning">Could not load recommendation: ${error.message}</div>`;
         }
+    }
+
+    /** Entry verdict from the tactical scores: is now a good moment to buy? */
+    function timingCell(h) {
+        const t = h.timing || {};
+        const d = t['1d'] ? t['1d'].score : null;
+        const w = t['1w'] ? t['1w'].score : null;
+        const nums = `${fmt(d, 0)} / ${fmt(w, 0)}`;
+        const v = (d !== null && d !== undefined) ? d : w;
+        if (v === null || v === undefined) return nums;
+        let label, cls;
+        if (v >= 15) { label = 'enter'; cls = 'text-success fw-bold'; }
+        else if (v <= -15) { label = 'wait'; cls = 'text-danger fw-bold'; }
+        else { label = 'ok'; cls = 'text-muted'; }
+        return `${nums} · <span class="${cls}">${label}</span>`;
     }
 
     function render(rec) {
@@ -34,6 +56,9 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
+        const rb = rec.rebalance;
+        const hasTargets = rec.holdings.some(h => h.target_value !== undefined);
+
         let html = `
             <p class="small text-muted mb-2">
                 Top ${rec.holdings.length} of max ${rec.max_names} names by the ${rec.selection_horizon} composite score
@@ -41,6 +66,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 Correlated near-duplicates are skipped and existing picks are kept unless they fall out of favor,
                 so this should change slowly - it is not meant to be rebalanced every scan.${helpIcon('recommendation')}
             </p>`;
+
+        // dollar base control
+        html += `
+            <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+                <div class="input-group input-group-sm" style="max-width: 240px;">
+                    <span class="input-group-text">Base $</span>
+                    <input type="number" class="form-control" id="rec-base-input" min="0" step="100"
+                           value="${rb ? rb.base_value : ''}" placeholder="portfolio value">
+                    <button class="btn btn-outline-secondary" id="rec-base-apply">Apply</button>
+                </div>
+                <span class="small text-muted">
+                    ${rb && rb.from_portfolio
+                        ? 'Sized off your portfolio market value' + helpIcon('recTarget')
+                        : rb ? 'Sized off your custom base amount' + helpIcon('recTarget')
+                             : 'Add portfolio positions or enter a base amount to get dollar targets'}
+                </span>
+            </div>`;
 
         const r = rec.risk;
         if (r && r.ann_vol !== undefined) {
@@ -61,7 +103,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     <thead class="table-light">
                         <tr>
                             <th>Symbol</th>
-                            <th title="${METRIC_HELP.recWeight}">Weight</th>
+                            <th title="${METRIC_HELP.recWeight}">Weight</th>` +
+            (hasTargets ? `
+                            <th title="${METRIC_HELP.recTarget}">Target $</th>
+                            <th title="${METRIC_HELP.recTarget}">Shares</th>` : '') + `
                             <th title="Composite score and watchlist rank at the ${rec.selection_horizon} horizon - the backtested selection signal.">Score (rank)</th>
                             <th title="${METRIC_HELP.recTiming}">Timing 1d / 1w</th>
                             <th title="${METRIC_HELP.sharpe}">Sharpe</th>
@@ -73,18 +118,15 @@ document.addEventListener('DOMContentLoaded', function () {
                     <tbody>`;
 
         rec.holdings.forEach(h => {
-            const timing = ['1d', '1w'].map(p => {
-                const t = h.timing && h.timing[p];
-                if (!t) return '–';
-                const cls = t.score >= 15 ? 'text-success' : t.score <= -15 ? 'text-danger' : 'text-muted';
-                return `<span class="${cls}">${fmt(t.score, 0)}</span>`;
-            }).join(' / ');
             html += `
                 <tr>
                     <td class="fw-bold">${h.symbol}</td>
-                    <td>${fmt(h.weight, 1)}%</td>
+                    <td>${fmt(h.weight, 1)}%</td>` +
+                (hasTargets ? `
+                    <td>${money(h.target_value)}</td>
+                    <td title="at $${fmt(h.price)} per share">${fmt(h.target_shares, 2)}</td>` : '') + `
                     <td>${fmt(h.score, 1)}${h.rank ? ` (${h.rank})` : ''}</td>
-                    <td>${timing}</td>
+                    <td>${timingCell(h)}</td>
                     <td>${fmt(h.sharpe)}</td>
                     <td>${fmt(h.beta)}</td>
                     <td class="small">${h.sector || '–'}</td>
@@ -101,35 +143,67 @@ document.addEventListener('DOMContentLoaded', function () {
             html += `<div class="small text-muted mb-2">Since last recommendation:${helpIcon('recChanges')} ${bits.join('; ')}</div>`;
         }
 
-        const vs = rec.vs_current;
-        if (vs && ((vs.not_held && vs.not_held.length) || (vs.held_not_recommended && vs.held_not_recommended.length))) {
-            html += `<div class="small mb-1"><strong>Versus your portfolio:</strong>${helpIcon('recVsCurrent')}</div>`;
-            if (vs.not_held && vs.not_held.length) {
-                const items = vs.not_held.slice(0, 10)
-                    .map(d => `${d.symbol} (${fmt(d.weight, 1)}%)`).join(', ');
-                html += `<div class="small text-success mb-1">Recommended but not held: ${items}</div>`;
-            }
-            if (vs.held_not_recommended && vs.held_not_recommended.length) {
-                const items = vs.held_not_recommended
-                    .map(d => `${d.symbol} (${fmt(d.current_weight, 1)}% of portfolio)`).join(', ');
-                html += `<div class="small text-danger mb-1">Held but not currently recommended: ${items}</div>`;
-            }
+        if (rb && rb.trades && rb.trades.length > 0) {
+            html += `
+            <div class="mt-3">
+                <div class="small mb-1">
+                    <strong>Rebalance plan</strong>${helpIcon('recRebalance')}
+                    <span class="text-muted">
+                        base ${money(rb.base_value)} · buys ${money(rb.buy_total)} · sells ${money(rb.sell_total)}
+                        ${rb.net_cash_needed > 0 ? `· needs ${money(rb.net_cash_needed)} new cash` : ''}
+                        · trades under ${money(rb.min_trade)} skipped
+                    </span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Symbol</th><th>Action</th><th>Amount</th><th>Shares</th>
+                                <th>Now → Target</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+            rb.trades.forEach(t => {
+                const cls = t.action === 'buy' ? 'text-success fw-bold' : 'text-danger fw-bold';
+                html += `
+                    <tr>
+                        <td class="fw-bold">${t.symbol}</td>
+                        <td class="${cls}">${t.action.toUpperCase()}</td>
+                        <td>${money(Math.abs(t.delta_value))}</td>
+                        <td title="at $${fmt(t.price)} per share">${fmt(Math.abs(t.delta_shares), 2)}</td>
+                        <td class="small text-muted">${fmt(t.current_weight, 1)}% → ${fmt(t.target_weight, 1)}%</td>
+                    </tr>`;
+            });
+            html += `</tbody></table></div></div>`;
+        } else if (rb) {
+            html += `<div class="small text-success mt-2">Your holdings are already within 1% of the recommended weights - nothing to trade.</div>`;
         }
 
-        html += `<div class="small text-muted mt-2">Research output, not investment advice.</div>`;
+        html += `<div class="small text-muted mt-2">Research output, not investment advice. Amounts use the latest cached prices.</div>`;
 
         area.innerHTML = html;
         if (typeof initTooltips === 'function') {
             initTooltips(area);
         }
+
+        const baseInput = document.getElementById('rec-base-input');
+        const baseApply = document.getElementById('rec-base-apply');
+        if (baseApply && baseInput) {
+            const apply = () => {
+                const v = parseFloat(baseInput.value);
+                loadRecommendation((!isNaN(v) && v > 0) ? v : null);
+            };
+            baseApply.addEventListener('click', apply);
+            baseInput.addEventListener('keydown', e => { if (e.key === 'Enter') apply(); });
+        }
     }
 
     if (refreshButton) {
-        refreshButton.addEventListener('click', loadRecommendation);
+        refreshButton.addEventListener('click', () => loadRecommendation());
     }
 
     // initial load pulls from the last stored scan
-    setTimeout(loadRecommendation, 1500);
+    setTimeout(() => loadRecommendation(), 1500);
 
     window.loadRecommendation = loadRecommendation;
 });

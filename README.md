@@ -115,6 +115,12 @@ The dashboard maintains a suggested long-only portfolio of at most 20 names
   of the target size, so small score wiggles do not force trades.
 - **Weighting**: inverse volatility with a mild score tilt, capped at 15% per name,
   so each position contributes roughly similar risk.
+- **Dollar targets and a rebalance plan**: weights are converted into concrete
+  dollar amounts and (fractional) share counts, sized off your portfolio's market
+  value by default or any base amount you type. The rebalance plan lists exactly
+  what to buy and sell to move your current holdings to the target weights; trades
+  under 1% of the base are skipped, and a full exit uses your exact held share
+  count. A sell there is a prompt to review, not an order.
 
 The exact scheme is backtestable (`python backtest.py --top 0.24 --weighting inv_vol`).
 Over the same 3 years as the headline run, holding the top ~20 of 83 names:

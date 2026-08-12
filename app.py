@@ -472,7 +472,8 @@ def recommendation():
             results, store,
             max_names=config['settings'].get('recommendationSize', 20),
             prev_symbols=prev.get('symbols'),
-            positions=config.get('portfolio', {}).get('positions'))
+            positions=config.get('portfolio', {}).get('positions'),
+            base_value=request.args.get('base', type=float))
         if rec is None:
             return jsonify({'holdings': [], 'asOf': as_of,
                             'note': 'No names with a positive score to recommend right now.'})

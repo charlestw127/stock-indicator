@@ -177,7 +177,7 @@ def _holding_weights(held, snap, weighting):
         raw[s] = 1.0 / max(vol if vol else 20.0, 1e-6)
     total = sum(raw.values())
     weights = {s: v / total for s, v in raw.items()}
-    cap = 0.15
+    cap = max(0.15, 1.0 / len(raw))
     for _ in range(5):
         excess = sum(w - cap for w in weights.values() if w > cap)
         if excess <= 1e-9:

@@ -26,9 +26,10 @@ const METRIC_HELP = {
     movers: 'Names whose rank jumped 3 or more places since the previous scan - where the model changed its mind fastest.',
     recommendation: 'Selection uses the 1m composite score because that is the configuration the walk-forward backtest validated. The 1d/1w columns are entry-timing context only. Deliberately slow-moving: existing picks are kept while they still rank well, and highly correlated near-duplicates are excluded. Max 20 names - beyond that a portfolio just tracks the index.',
     recWeight: 'Inverse-volatility weight with a mild score tilt, capped at 15% per name. Calmer names get more capital so each position contributes roughly similar risk - a large weight means low risk, not high conviction.',
-    recTiming: 'Tactical scores for entry timing: green = favorable to buy now, red = wait. A name can be a strong hold (1m) while being short-term stretched (1d) - that suggests waiting for a dip rather than skipping it.',
+    recTiming: 'Is now a good moment to buy this name? Shows the 1d and 1w composite scores with a verdict: enter = short-term conditions favor buying now, wait = the name is worth holding but currently stretched, so a dip is likely a better entry, ok = neutral. Selection is decided by the 1m column; this only times the entry. Note the 1d score has no power for choosing between names - only for timing within one.',
+    recTarget: 'Dollar amount and share count to buy for each name, splitting the base amount by the recommended weights. The base defaults to your portfolio market value; type a different amount to size the whole portfolio to it. Fractional shares are shown - round to whole shares if your broker requires it.',
     recChanges: 'Names added or dropped versus the previous recommendation. Sticky by design: an incumbent survives until it falls well down the rankings, so small score wiggles do not force trades.',
-    recVsCurrent: 'The reposition check: recommended names you do not hold, and holdings that no longer make the list. A name leaving the list is a prompt to review, not an automatic sell - it may simply have slipped in relative rank.',
+    recRebalance: 'Concrete trades to move your current holdings to the recommended weights: how many dollars and shares to buy or sell of each name. A full exit uses your exact held share count. Trades under 1% of the base are skipped on purpose - tiny rebalances cost more in spreads and attention than they earn. A sell here is a prompt to review, not an order.',
 };
 
 // Matched by substring against each signal string.

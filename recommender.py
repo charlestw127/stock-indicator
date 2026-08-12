@@ -37,12 +37,14 @@ TIMING_PERIODS = ('1d', '1w')
 
 
 def recommend(results, store, max_names=MAX_NAMES, prev_symbols=None,
-              positions=None):
+              positions=None, base_value=None):
     """Build the recommended portfolio.
 
     results: a scan results dict (results['symbols'][sym][period])
     prev_symbols: previously recommended symbols, for hysteresis
-    positions: the user's current positions, for the reposition diff
+    positions: the user's current positions, for the rebalance plan
+    base_value: dollar base to size targets; defaults to the market value
+        of the current positions
     Returns a dict for the API, or None if there is nothing to recommend.
     """
     max_names = max(1, min(MAX_NAMES, int(max_names or MAX_NAMES)))
@@ -90,6 +92,19 @@ def recommend(results, store, max_names=MAX_NAMES, prev_symbols=None,
 
     weights = _inverse_vol_weights(selected, results, returns)
 
+    prices = _latest_prices(store, selected)
+    current_shares, current_values = _current_book(positions, store)
+    total_value = sum(current_values.values())
+    try:
+        override = float(base_value) if base_value else None
+    except (TypeError, ValueError):
+        override = None
+    if override and override > 0:
+        base, from_portfolio = override, False
+    else:
+        base = total_value if total_value > 0 else None
+        from_portfolio = True
+
     holdings = []
     for symbol in sorted(selected, key=lambda s: -weights.get(s, 0)):
         sel = dict(results['symbols'][symbol].get(SELECT_PERIOD) or {})
@@ -102,9 +117,12 @@ def recommend(results, store, max_names=MAX_NAMES, prev_symbols=None,
                 timing[tp] = {'score': round(row['score'], 1),
                               'rank': row.get('rank')}
         signals = (sel.get('signals') or [])[:2]
-        holdings.append({
+        price = prices.get(symbol)
+        weight = weights.get(symbol, 0)
+        row = {
             'symbol': symbol,
-            'weight': round(weights.get(symbol, 0) * 100, 1),
+            'weight': round(weight * 100, 1),
+            'price': round(price, 2) if price else None,
             'score': round(sel.get('score', 0), 1),
             'rank': sel.get('rank'),
             'timing': timing,
@@ -113,7 +131,11 @@ def recommend(results, store, max_names=MAX_NAMES, prev_symbols=None,
             'beta': risk.get('beta'),
             'sector': fund.get('sector'),
             'top_signal': signals[0] if signals else None,
-        })
+        }
+        if base and price:
+            row['target_value'] = round(weight * base, 2)
+            row['target_shares'] = round(weight * base / price, 3)
+        holdings.append(row)
 
     out = {
         'holdings': holdings,
@@ -125,8 +147,10 @@ def recommend(results, store, max_names=MAX_NAMES, prev_symbols=None,
             'dropped': sorted(prev_symbols - set(selected)) if prev_symbols else [],
         },
     }
-    if positions:
-        out['vs_current'] = _reposition_diff(selected, weights, positions, store)
+    if base:
+        out['rebalance'] = _rebalance_plan(
+            selected, weights, base, current_shares, current_values,
+            prices, store, from_portfolio)
     return out
 
 
@@ -175,44 +199,103 @@ def _inverse_vol_weights(selected, results, returns):
 
     total = sum(raw.values())
     weights = {s: v / total for s, v in raw.items()}
+    # the cap cannot be tighter than an equal split or weight evaporates
+    cap = max(WEIGHT_CAP, 1.0 / len(raw))
     # cap and redistribute; a few passes converge fine
     for _ in range(5):
-        excess = sum(w - WEIGHT_CAP for w in weights.values() if w > WEIGHT_CAP)
+        excess = sum(w - cap for w in weights.values() if w > cap)
         if excess <= 1e-9:
             break
-        under = {s: w for s, w in weights.items() if w < WEIGHT_CAP}
+        under = {s: w for s, w in weights.items() if w < cap}
         under_total = sum(under.values())
         for s, w in weights.items():
-            if w > WEIGHT_CAP:
-                weights[s] = WEIGHT_CAP
+            if w > cap:
+                weights[s] = cap
             elif under_total > 0:
                 weights[s] = w + excess * (w / under_total)
-    return weights
+    total = sum(weights.values())
+    return {s: w / total for s, w in weights.items()}
 
 
-def _reposition_diff(selected, weights, positions, store):
-    """Compare the recommendation with what the user actually holds."""
-    current = {}
+def _latest_prices(store, symbols):
+    prices = {}
+    for sym in symbols:
+        try:
+            hist = store.get_history(sym)
+        except Exception:
+            continue
+        if not hist.empty:
+            prices[sym] = float(hist['Close'].iloc[-1])
+    return prices
+
+
+def _current_book(positions, store):
+    """Current holdings as ({symbol: shares}, {symbol: market value})."""
+    shares_map, values = {}, {}
     for pos in positions or []:
         symbol = pos.get('symbol')
         shares = float(pos.get('shares') or 0)
         if not symbol or shares <= 0:
             continue
-        try:
-            hist = store.get_history(symbol)
-        except Exception:
-            continue
-        if not hist.empty:
-            current[symbol] = shares * float(hist['Close'].iloc[-1])
-    total = sum(current.values())
-    current_w = {s: v / total for s, v in current.items()} if total > 0 else {}
+        price = _latest_prices(store, [symbol]).get(symbol)
+        if price:
+            shares_map[symbol] = shares
+            values[symbol] = shares * price
+    return shares_map, values
 
-    add = [{'symbol': s, 'weight': round(weights[s] * 100, 1)}
-           for s in selected if s not in current_w]
-    review = [{'symbol': s, 'current_weight': round(w * 100, 1)}
-              for s, w in sorted(current_w.items(), key=lambda kv: -kv[1])
-              if s not in selected]
+
+def _rebalance_plan(selected, weights, base, current_shares, current_values,
+                    prices, store, from_portfolio):
+    """Concrete trades to move the current book to the target weights.
+
+    Trades smaller than 1% of the base (or $25) are skipped - matching the
+    anti-churn stance of the selection itself. A full exit uses the exact
+    held share count instead of a price-derived estimate.
+    """
+    all_syms = set(selected) | set(current_values)
+    prices = dict(prices)
+    missing = [s for s in all_syms if s not in prices]
+    prices.update(_latest_prices(store, missing))
+
+    min_trade = max(base * 0.01, 25.0)
+    trades = []
+    buy_total = sell_total = 0.0
+    for sym in all_syms:
+        cur_v = current_values.get(sym, 0.0)
+        tgt_w = weights.get(sym, 0.0) if sym in selected else 0.0
+        tgt_v = tgt_w * base
+        delta = tgt_v - cur_v
+        if abs(delta) < min_trade:
+            continue
+        price = prices.get(sym)
+        if tgt_v == 0 and sym in current_shares:
+            delta_shares = -current_shares[sym]
+        elif price:
+            delta_shares = delta / price
+        else:
+            delta_shares = None
+        if delta > 0:
+            buy_total += delta
+        else:
+            sell_total += -delta
+        trades.append({
+            'symbol': sym,
+            'action': 'buy' if delta > 0 else 'sell',
+            'price': round(price, 2) if price else None,
+            'current_value': round(cur_v, 2),
+            'target_value': round(tgt_v, 2),
+            'delta_value': round(delta, 2),
+            'delta_shares': round(delta_shares, 3) if delta_shares is not None else None,
+            'current_weight': round(cur_v / base * 100, 1),
+            'target_weight': round(tgt_w * 100, 1),
+        })
+    trades.sort(key=lambda t: -abs(t['delta_value']))
     return {
-        'not_held': sorted(add, key=lambda d: -d['weight']),
-        'held_not_recommended': review,
+        'base_value': round(base, 2),
+        'from_portfolio': from_portfolio,
+        'min_trade': round(min_trade, 2),
+        'buy_total': round(buy_total, 2),
+        'sell_total': round(sell_total, 2),
+        'net_cash_needed': round(buy_total - sell_total, 2),
+        'trades': trades,
     }

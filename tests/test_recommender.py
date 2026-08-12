@@ -93,16 +93,45 @@ def test_hysteresis_keeps_incumbents(tmp_path):
     assert rec['changes']['dropped'] == []
 
 
-def test_reposition_diff(tmp_path):
+def test_rebalance_plan(tmp_path):
     paths = independent_paths(5)
     store = build_store(tmp_path, paths)
     results = fake_results({s: 20 for s in paths})
-    positions = [{'symbol': 'S0', 'shares': 10, 'entryPrice': 50},
-                 {'symbol': 'ZZZ_NOT_RECOMMENDED', 'shares': 5, 'entryPrice': 10}]
-    store.store_history('ZZZ_NOT_RECOMMENDED',
+    store.store_history('OLDPOS',
                         make_ohlcv(np.linspace(100, 90, 200), seed=42),
                         mark_fresh=True)
+    positions = [{'symbol': 'S0', 'shares': 10, 'entryPrice': 50},
+                 {'symbol': 'OLDPOS', 'shares': 5, 'entryPrice': 10}]
     rec = recommend(results, store, max_names=5, positions=positions)
-    vs = rec['vs_current']
-    assert 'S0' not in [d['symbol'] for d in vs['not_held']]
-    assert 'ZZZ_NOT_RECOMMENDED' in [d['symbol'] for d in vs['held_not_recommended']]
+
+    rb = rec['rebalance']
+    assert rb['from_portfolio'] is True
+    assert rb['base_value'] > 0
+
+    trades = {t['symbol']: t for t in rb['trades']}
+    # full exit of the non-recommended name uses the exact held share count
+    assert trades['OLDPOS']['action'] == 'sell'
+    assert trades['OLDPOS']['delta_shares'] == -5
+    # recommended names not yet held get funded
+    buys = [t for t in rb['trades'] if t['action'] == 'buy']
+    assert buys and all(t['delta_value'] > 0 for t in buys)
+    # holdings carry dollar and share targets when a base exists
+    top = rec['holdings'][0]
+    assert top['target_value'] > 0
+    assert top['target_shares'] > 0
+    assert top['price'] > 0
+
+
+def test_rebalance_base_override(tmp_path):
+    paths = independent_paths(4)
+    store = build_store(tmp_path, paths)
+    results = fake_results({s: 20 for s in paths})
+    rec = recommend(results, store, max_names=4, base_value=10000)
+
+    rb = rec['rebalance']
+    assert rb['from_portfolio'] is False
+    assert rb['base_value'] == 10000
+    # with no current positions everything is a buy summing to about the base
+    assert all(t['action'] == 'buy' for t in rb['trades'])
+    total_targets = sum(h['target_value'] for h in rec['holdings'])
+    assert 9500 < total_targets < 10500
