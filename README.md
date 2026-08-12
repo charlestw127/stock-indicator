@@ -159,6 +159,13 @@ sector/asset-class ETFs), 3 years (2023-08 to 2026-08), scores at the 1m horizon
 rebalanced every 5 sessions, top 20% held long-only, no transaction costs.
 Reproduce with `python backtest.py`.
 
+The one-line version: $10,000 in the model became **$20,850** over the window,
+versus $18,680 for holding the whole watchlist equal-weight and $17,750 for SPY -
+with a worst drawdown of -9.2% against SPY's -14.0%. The equal-weight comparison is
+the honest one: it shows the model's selection added ~22 points beyond what the
+watchlist itself delivered. (Before costs, in one bull-market sample - see the
+caveats.)
+
 ### Results: agents
 
 | agent | CAGR % | ann vol % | Sharpe | max DD % | hit rate % | turnover/rebal |

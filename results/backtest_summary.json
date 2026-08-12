@@ -5,6 +5,7 @@
       "step": 5,
       "years": 3.0,
       "top": 0.2,
+      "weighting": "equal",
       "n_symbols": 83,
       "n_rebalances": 151,
       "start": "2023-08-07",
@@ -326,7 +327,34 @@
       "2026-07-21",
       "2026-07-28",
       "2026-08-04"
-    ]
+    ],
+    "verdict": {
+      "window": "2023-08-07 to 2026-08-04",
+      "years": 3.0,
+      "base": 10000,
+      "rows": [
+        {
+          "label": "SPY buy-and-hold",
+          "total_return": 77.5,
+          "end_value": 17750.0,
+          "max_drawdown": -13.98
+        },
+        {
+          "label": "equal-weight watchlist",
+          "total_return": 86.8,
+          "end_value": 18680.0,
+          "max_drawdown": -12.87
+        },
+        {
+          "label": "model (composite)",
+          "total_return": 108.5,
+          "end_value": 20850.0,
+          "max_drawdown": -9.22
+        }
+      ],
+      "model_vs_spy_points": 31.0,
+      "model_vs_equal_weight_points": 21.7
+    }
   },
   "event_studies": {
     "baseline": {

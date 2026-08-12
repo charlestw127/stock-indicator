@@ -252,6 +252,64 @@ def _equity(rets):
     return [round(float(x), 4) for x in np.cumprod(1.0 + np.asarray(rets))]
 
 
+def build_verdict(results, base=10_000):
+    """Head-to-head growth comparison - the number that actually answers
+    'is this working': what $10k became under the model vs buy-and-hold."""
+    cfg = results['config']
+    strategies = results['strategies']
+    rows = []
+    for label, key in [('SPY buy-and-hold', 'spy'),
+                       ('equal-weight watchlist', 'equal_weight'),
+                       ('model (composite)', 'composite')]:
+        s = strategies.get(key)
+        if not s or s.get('total_return') is None:
+            continue
+        rows.append({
+            'label': label,
+            'total_return': s['total_return'],
+            'end_value': round(base * (1.0 + s['total_return'] / 100.0), 2),
+            'max_drawdown': s['max_drawdown'],
+        })
+    verdict = {
+        'window': f"{cfg['start']} to {cfg['end']}",
+        'years': cfg['years'],
+        'base': base,
+        'rows': rows,
+    }
+    spy = strategies.get('spy')
+    comp = strategies.get('composite')
+    ew = strategies.get('equal_weight')
+    if spy and comp:
+        verdict['model_vs_spy_points'] = round(
+            comp['total_return'] - spy['total_return'], 1)
+    if ew and comp:
+        verdict['model_vs_equal_weight_points'] = round(
+            comp['total_return'] - ew['total_return'], 1)
+    return verdict
+
+
+def print_verdict(verdict):
+    print(f"\ngrowth of ${verdict['base']:,} from {verdict['window']} "
+          f"({verdict['years']:g} years):")
+    for row in verdict['rows']:
+        print(f"  {row['label']:<24} {row['total_return']:+7.1f}%   "
+              f"${verdict['base']:,} -> ${row['end_value']:>9,.0f}   "
+              f"(worst drawdown {row['max_drawdown']}%)")
+    vs_spy = verdict.get('model_vs_spy_points')
+    vs_ew = verdict.get('model_vs_equal_weight_points')
+    if vs_spy is not None:
+        beat = 'beat' if vs_spy >= 0 else 'trailed'
+        line = f"  model {beat} SPY by {abs(vs_spy):.1f} points"
+        if vs_ew is not None:
+            beat_ew = 'beat' if vs_ew >= 0 else 'trailed'
+            line += (f" and {beat_ew} the equal-weight watchlist by "
+                     f"{abs(vs_ew):.1f} points")
+        print(line)
+        if vs_ew is not None and vs_ew <= 0 <= vs_spy:
+            print("  note: the edge over SPY came from the watchlist itself, "
+                  "not from the model's selection")
+
+
 # -- event studies ------------------------------------------------------
 
 def event_studies(analyzers, years=3):
@@ -453,6 +511,8 @@ def main():
                            weighting=args.weighting)
     print(f"  done in {time.time() - t0:.0f}s")
 
+    results['verdict'] = build_verdict(results)
+
     print("running event studies...")
     events = event_studies(analyzers, years=args.years)
 
@@ -477,6 +537,8 @@ def main():
         print(f"{name:<16} {s['cagr'] if s['cagr'] is not None else '-':>7} "
               f"{s['sharpe'] if s['sharpe'] is not None else '-':>7} "
               f"{s['max_drawdown']:>8} {s['hit_rate']:>6}")
+
+    print_verdict(results['verdict'])
 
     print("\nIC summary (composite):", results['ic'].get('composite'))
     print(args.out, "written")
