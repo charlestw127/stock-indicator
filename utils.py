@@ -7,11 +7,11 @@ import datetime as dt
 def time_period_to_start_date(time_period, end_date):
     """Convert time period to a start date."""
     periods = {
+        '1d': dt.timedelta(days=5),  # a few bars so short indicators have data
         '1w': dt.timedelta(weeks=1),
         '1m': dt.timedelta(days=30),
         '6m': dt.timedelta(days=180),
-        '1y': dt.timedelta(days=365),
-        '5y': dt.timedelta(days=365 * 5)
+        '1y': dt.timedelta(days=365)
     }
     
     delta = periods.get(time_period, dt.timedelta(days=180))  # Default to 6 months

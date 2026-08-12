@@ -24,18 +24,27 @@ from indicators import (
 )
 
 # Lookbacks roughly match the holding period implied by each UI column.
+# The optional 'tilt' multiplies the regime weights before renormalizing:
+# measured ICs on this universe (results/ic_by_horizon.json) show mean
+# reversion predicts at short horizons and momentum at long ones, so the
+# tactical columns lean contrarian and the long columns lean momentum.
+# Calibrated in-sample - treat the tilts as informed defaults, not truth.
 HORIZON_PARAMS = {
+    '1d': {'mom_lb': 3,   'fast': 3,  'slow': 10,  'z_win': 5,
+           'vol_win': 5,   'rsi': 3,  'linreg_win': 10,  'risk_win': 21,
+           'tilt': {'mean_reversion': 1.5, 'momentum': 0.7}},
     '1w': {'mom_lb': 5,   'fast': 5,  'slow': 20,  'z_win': 10,
-           'vol_win': 10,  'rsi': 7,  'linreg_win': 21,  'risk_win': 63},
+           'vol_win': 10,  'rsi': 7,  'linreg_win': 21,  'risk_win': 63,
+           'tilt': {'mean_reversion': 1.2}},
     '1m': {'mom_lb': 21,  'fast': 10, 'slow': 50,  'z_win': 20,
            'vol_win': 21,  'rsi': 14, 'linreg_win': 63,  'risk_win': 126},
     '6m': {'mom_lb': 126, 'fast': 20, 'slow': 100, 'z_win': 50,
-           'vol_win': 63,  'rsi': 14, 'linreg_win': 126, 'risk_win': 252},
+           'vol_win': 63,  'rsi': 14, 'linreg_win': 126, 'risk_win': 252,
+           'tilt': {'momentum': 1.3, 'mean_reversion': 0.6}},
     '1y': {'mom_lb': 252, 'fast': 50, 'slow': 200, 'z_win': 100,
-           'vol_win': 126, 'rsi': 14, 'linreg_win': 252, 'risk_win': 252},
-    '5y': {'mom_lb': 252, 'fast': 50, 'slow': 200, 'z_win': 200,
-           'vol_win': 252, 'rsi': 21, 'linreg_win': 252, 'risk_win': 504,
-           'use_12_1': True},
+           'vol_win': 126, 'rsi': 14, 'linreg_win': 252, 'risk_win': 252,
+           'use_12_1': True,
+           'tilt': {'momentum': 1.3, 'mean_reversion': 0.6}},
 }
 
 REGIME_WEIGHTS = {
@@ -282,6 +291,11 @@ class SymbolAnalyzer:
         }
 
         weights = REGIME_WEIGHTS[trend_regime]
+        tilt = p.get('tilt')
+        if tilt:
+            weights = {k: w * tilt.get(k, 1.0) for k, w in weights.items()}
+            total = sum(weights.values())
+            weights = {k: w / total for k, w in weights.items()}
         score = 100.0 * sum(weights[k] * factors[k] for k in weights)
         if vol_pctile is not None and vol_pctile >= 85:
             score *= 0.8

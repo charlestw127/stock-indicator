@@ -60,7 +60,8 @@ def load_universe(store, symbols, min_bars=MIN_HISTORY):
     return analyzers, skipped
 
 
-def run_backtest(analyzers, spy_close, period='1m', step=5, years=3, top=0.2):
+def run_backtest(analyzers, spy_close, period='1m', step=5, years=3, top=0.2,
+                 weighting='equal'):
     """Core walk-forward loop. Returns the full results dict."""
     calendar = spy_close.index
     end = len(calendar) - step
@@ -93,6 +94,8 @@ def run_backtest(analyzers, spy_close, period='1m', step=5, years=3, top=0.2):
             res = an.score_at(period, i)
             entry = dict(res['factors'])
             entry['composite'] = res['score']
+            vol = an.rv21.iloc[i]
+            entry['_vol'] = float(vol) if np.isfinite(vol) else None
             scores[symbol] = entry
             c0, c1 = float(an.close.iloc[i]), float(an.close.iloc[j])
             if c0 > 0:
@@ -107,6 +110,7 @@ def run_backtest(analyzers, spy_close, period='1m', step=5, years=3, top=0.2):
 
     results = {
         'config': {'period': period, 'step': step, 'years': years, 'top': top,
+                   'weighting': weighting,
                    'n_symbols': len(analyzers), 'n_rebalances': len(per_date),
                    'start': str(dates[0].date()), 'end': str(dates[-1].date())},
         'strategies': {},
@@ -126,7 +130,8 @@ def run_backtest(analyzers, spy_close, period='1m', step=5, years=3, top=0.2):
             ranked = sorted(usable, key=lambda s: snap['scores'][s][strat],
                             reverse=True)
             held = set(ranked[:max(1, int(len(ranked) * top))])
-            rets.append(float(np.mean([snap['fwd'][s] for s in held])))
+            w = _holding_weights(held, snap, weighting)
+            rets.append(float(sum(snap['fwd'][s] * w[s] for s in held)))
             if prev_held:
                 turnover.append(len(held - prev_held) / max(1, len(held)))
             prev_held = held
@@ -159,6 +164,32 @@ def run_backtest(analyzers, spy_close, period='1m', step=5, years=3, top=0.2):
 
     results['deciles'] = _decile_table(per_date, step)
     return results
+
+
+def _holding_weights(held, snap, weighting):
+    """Weights for the held basket: equal, or inverse-volatility capped at
+    15% per name (the recommender's scheme)."""
+    if weighting != 'inv_vol' or len(held) <= 1:
+        return {s: 1.0 / len(held) for s in held}
+    raw = {}
+    for s in held:
+        vol = snap['scores'][s].get('_vol')
+        raw[s] = 1.0 / max(vol if vol else 20.0, 1e-6)
+    total = sum(raw.values())
+    weights = {s: v / total for s, v in raw.items()}
+    cap = 0.15
+    for _ in range(5):
+        excess = sum(w - cap for w in weights.values() if w > cap)
+        if excess <= 1e-9:
+            break
+        under_total = sum(w for w in weights.values() if w < cap)
+        for s, w in weights.items():
+            if w > cap:
+                weights[s] = cap
+            elif under_total > 0:
+                weights[s] = w + excess * (w / under_total)
+    total = sum(weights.values())
+    return {s: w / total for s, w in weights.items()}
 
 
 def _strategy_stats(rets, step):
@@ -385,6 +416,11 @@ def main():
                         help='fraction of universe held (default 0.2)')
     parser.add_argument('--symbols', default=None,
                         help='comma-separated override of the universe')
+    parser.add_argument('--weighting', default='equal',
+                        choices=['equal', 'inv_vol'],
+                        help='basket weighting for held names (default equal)')
+    parser.add_argument('--out', default='results/backtest_summary.json',
+                        help='output JSON path')
     parser.add_argument('--no-charts', action='store_true')
     args = parser.parse_args()
 
@@ -413,7 +449,8 @@ def main():
     t0 = time.time()
     results = run_backtest(analyzers, spy['Close'].astype(float),
                            period=args.period, step=args.step,
-                           years=args.years, top=args.top)
+                           years=args.years, top=args.top,
+                           weighting=args.weighting)
     print(f"  done in {time.time() - t0:.0f}s")
 
     print("running event studies...")
@@ -422,7 +459,7 @@ def main():
     os.makedirs('results', exist_ok=True)
     summary = {'backtest': results, 'event_studies': events}
     curves = summary['backtest'].pop('equity_curves')
-    with open('results/backtest_summary.json', 'w') as f:
+    with open(args.out, 'w') as f:
         json.dump(summary, f, indent=2)
     summary['backtest']['equity_curves'] = curves
 
@@ -442,7 +479,7 @@ def main():
               f"{s['max_drawdown']:>8} {s['hit_rate']:>6}")
 
     print("\nIC summary (composite):", results['ic'].get('composite'))
-    print("results/backtest_summary.json written")
+    print(args.out, "written")
 
 
 if __name__ == '__main__':

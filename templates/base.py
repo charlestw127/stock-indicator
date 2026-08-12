@@ -69,6 +69,23 @@ BASE_TEMPLATE = """
             </div>
         </div>
 
+        <!-- Recommended Portfolio Row -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Recommended Portfolio <span id="rec-asof" class="text-muted small fw-normal"></span></span>
+                        <button class="btn btn-sm btn-outline-primary" id="refresh-recommendation-button">Refresh</button>
+                    </div>
+                    <div class="card-body" id="recommendation-area">
+                        <p class="text-center text-muted">
+                            The recommended portfolio will appear after the first scan.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Dashboard Guide Row -->
         <div class="row mb-4">
             <div class="col-12">
@@ -271,6 +288,7 @@ BASE_TEMPLATE = """
     <!-- JavaScript files -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/glossary.js"></script>
+    <script src="/static/js/recommend.js"></script>
     <script src="/static/js/main.js"></script>
     <script src="/static/js/config.js"></script>
     <script src="/static/js/portfolio.js"></script>

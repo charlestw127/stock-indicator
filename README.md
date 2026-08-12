@@ -2,10 +2,15 @@
 
 A multi-factor stock scoring and screening system with a walk-forward backtesting
 harness. A Flask dashboard scans a watchlist of ~80 stocks and ETFs on a schedule,
-scores every name at five horizons (1w to 5y) with a regime-aware factor model, ranks
-the universe cross-sectionally, and tracks how those ranks move over time. Every part
-of the scoring model is backtested below, with the good and the bad results shown as
-they came out.
+scores every name at five horizons (1d to 1y) with a regime-aware factor model, ranks
+the universe cross-sectionally, tracks how those ranks move over time, and maintains
+a recommended portfolio of at most 20 names. Every part of the scoring model is
+backtested below, with the good and the bad results shown as they came out.
+
+The intended rhythm: check the dashboard in the morning to see what is worth buying
+(1d/1w columns for timing, the recommended portfolio for what), then again before the
+close to see whether anything needs repositioning. The recommendation is deliberately
+slow-moving - it is not meant to be traded every scan.
 
 Heavily influenced by [huseinzol05/Stock-Prediction-Models](https://github.com/huseinzol05/Stock-Prediction-Models),
 in particular the idea that a repo about trading models should lead with measured
@@ -17,6 +22,7 @@ results rather than feature lists.
 - [Indicator library](#indicator-library)
 - [Factor model](#factor-model)
 - [Regime model](#regime-model)
+- [Recommended portfolio](#recommended-portfolio)
 - [Agents](#agents)
 - [Results](#results)
   - [Results: agents](#results-agents)
@@ -71,9 +77,15 @@ Indicators are combined into five sleeves, each scored in [-1, +1]:
 4. **volume_flow** - MFI, CMF, OBV trend, VWAP deviation
 5. **quality** - rolling Sharpe, drawdown depth, volatility regime
 
-Each horizon (1w / 1m / 6m / 1y / 5y) uses lookbacks matched to its implied holding
+Each horizon (1d / 1w / 1m / 6m / 1y) uses lookbacks matched to its implied holding
 period. The composite is a weighted sum of sleeves scaled to [-100, +100], with a
 20% haircut when volatility is above its 85th percentile.
+
+On top of the regime weights, each horizon applies a fixed tilt: the tactical
+columns (1d, 1w) lean toward mean reversion and the long columns (6m, 1y) toward
+momentum, matching the term structure measured in the IC results below. The tilts
+were calibrated on those same ICs, so they are in-sample - treat them as informed
+defaults rather than validated edge.
 
 ## Regime model
 
@@ -88,6 +100,35 @@ from the Hurst exponent, variance ratio, ADX and Kaufman efficiency ratio:
 
 The idea: momentum signals get weight when the tape is persistent, stretch/reversion
 signals when it chops. Whether this earns its keep is examined in the results.
+
+## Recommended portfolio
+
+The dashboard maintains a suggested long-only portfolio of at most 20 names
+(`recommender.py`), built from the latest scan:
+
+- **Selection**: highest 1m composite scores - the horizon the walk-forward backtest
+  validated. The 1d/1w scores are shown for entry timing only, so the list does not
+  churn with every intraday scan. Names with a negative score never fill a slot.
+- **Correlation dedup**: a candidate correlated above 0.92 with an already-selected
+  name is skipped (stops QQQ and VOO both taking a slot).
+- **Hysteresis**: an incumbent keeps its place while it still ranks in the top 1.5x
+  of the target size, so small score wiggles do not force trades.
+- **Weighting**: inverse volatility with a mild score tilt, capped at 15% per name,
+  so each position contributes roughly similar risk.
+
+The exact scheme is backtestable (`python backtest.py --top 0.24 --weighting inv_vol`).
+Over the same 3 years as the headline run, holding the top ~20 of 83 names:
+
+| weighting | CAGR % | Sharpe | max DD % | hit rate % |
+| --- | --- | --- | --- | --- |
+| equal | 27.2 | 1.68 | -10.1 | 62.3 |
+| inverse-vol (used here) | 19.4 | 1.55 | **-8.6** | **65.6** |
+
+The tradeoff is explicit: inverse-vol weighting gave up ~8 points of CAGR in this
+bull-market sample (low-vol names drag when everything rises) in exchange for the
+shallowest drawdown of any configuration tested and a higher hit rate. That matches
+the intended use - a portfolio checked twice a day, not traded twice a day. If you
+prefer the return profile, the equal-weight variant is one flag away.
 
 ## Agents
 
@@ -153,17 +194,25 @@ At the weekly frequency of the headline run (n = 151 rebalances):
 
 None of these are statistically significant at 5-day forward returns. The picture
 changes completely as the horizon extends (`results/ic_by_horizon.json`, scoring
-horizon matched to holding period):
+horizon matched to holding period, horizon tilts applied):
 
 | config | composite IC | t-stat | momentum IC (t) | mean_rev IC (t) | n |
 | --- | --- | --- | --- | --- | --- |
-| 1w score, 5d hold | 0.012 | 0.67 | 0.008 (0.4) | -0.001 (-0.1) | 151 |
+| 1d score, 2d hold | -0.009 | -0.80 | 0.001 (0.1) | 0.003 (0.3) | 377 |
+| 1w score, 5d hold | 0.014 | 0.74 | 0.008 (0.4) | -0.001 (-0.1) | 151 |
 | 1m score, 21d hold | 0.020 | 0.60 | 0.010 (0.3) | 0.001 (0.0) | 35 |
-| 6m score, 63d hold | 0.089 | 1.70 | **0.121 (2.15)** | **-0.136 (-2.63)** | 11 |
+| 6m score, 63d hold | 0.109 | 2.04 | **0.121 (2.15)** | **-0.136 (-2.63)** | 11 |
 
-At the quarterly horizon the composite portfolio put up a 2.12 Sharpe with a -4.7%
+Worth stating plainly: the 1d column has no cross-sectional ranking power - its IC
+is slightly negative across 377 rebalances. It exists for entry timing within a name
+(the oversold-stretch event study below is where short-horizon signal lives), not for
+choosing between names. Selection decisions belong to the 1m+ columns.
+
+At the quarterly horizon the composite portfolio put up a 2.13 Sharpe with a -3.6%
 max drawdown and an 81.8% hit rate (vs 1.69 / -5.8% for SPY over the same rebalance
-grid) - though with only 11 non-overlapping quarters, treat that as suggestive.
+grid) - though with only 11 non-overlapping quarters, treat that as suggestive. The
+6m row benefits from the momentum tilt that was calibrated on these very ICs, so it
+is partly in-sample.
 
 ### Results: signal event studies
 
@@ -217,11 +266,19 @@ What I take away from these numbers:
    sleeve and top-quintile concentration in strong names do the heavy lifting; the
    fine ordering within the universe adds little at that frequency.
 
-4. **The regime weighting is only partially validated.** The composite's IC beats
-   every individual sleeve at the weekly horizon, which suggests blending helps. But
-   the horizon results argue the bigger lever is time: weight mean reversion at short
-   horizons and momentum at long ones, on top of (or instead of) the per-symbol
-   trending/choppy classification. That is the clearest next experiment.
+4. **The regime weighting is only partially validated, so horizon tilts were added
+   on top.** The composite's IC beats every individual sleeve at the weekly horizon,
+   which suggests blending helps. The horizon results argued the bigger lever is
+   time - weight mean reversion at short horizons and momentum at long ones - and
+   that is now built in as fixed per-horizon tilts. Because the tilts were calibrated
+   on the same ICs that motivated them, their contribution is in-sample; the honest
+   out-of-sample test is whether future scans keep the same term structure.
+
+5. **Position weighting is a real decision, not a detail.** The same selection rule
+   returned 27.2% CAGR equal-weighted and 19.4% inverse-vol weighted over this
+   sample, while inverse-vol cut the max drawdown to -8.6% and raised the hit rate.
+   In a rising tape, vol-balancing costs return; in a falling one it is the thing
+   that saves you. The recommended portfolio uses inverse-vol deliberately.
 
 ## Backtest caveats
 
@@ -239,6 +296,9 @@ Read the results with these in mind:
   non-overlapping periods; the event-study windows overlap, so effective n is lower
   than the row counts suggest.
 - **Yahoo adjusted prices**, refreshed weekly, are the only data source.
+- **The horizon tilts are in-sample.** They were set from the same IC measurements
+  used to evaluate them. The 1m column, which drives selection and the headline
+  results, carries no tilt.
 
 ## Installation
 
@@ -269,6 +329,7 @@ Run the backtest:
 ```bash
 python backtest.py                         # defaults: 1m scores, 5d rebalance, 3y, top 20%
 python backtest.py --period 6m --step 63   # quarterly variant
+python backtest.py --top 0.24 --weighting inv_vol   # the recommended-portfolio scheme
 python backtest.py --symbols AAPL,MSFT,NVDA --years 2
 ```
 
@@ -283,6 +344,7 @@ API endpoints, if you want the data without the UI:
 | endpoint | description |
 | --- | --- |
 | `POST /api/analyze` | scores + ranks + signals for a symbol list |
+| `GET /api/recommendation` | suggested portfolio (max 20 names) with weights and reposition diff |
 | `GET /api/history/<symbol>?period=1m` | stored score/rank history for a symbol |
 | `GET /api/market` | SPY/VIX market regime overlay |
 | `GET /api/backtest` | latest backtest summary JSON |
@@ -295,6 +357,7 @@ quant_engine.py      SymbolAnalyzer: factor sleeves, regime weights, scoring
 quant_indicators.py  indicator library (vol, momentum, reversion, flow, risk)
 indicators.py        classic indicator set (RSI, MACD, stochastic, ADX, PSAR)
 strategies.py        cross-sectional percentile ranking
+recommender.py       recommended portfolio: selection, dedup, hysteresis, weights
 backtest.py          walk-forward harness, IC analysis, event studies, charts
 data_store.py        SQLite price cache, run history, fundamentals cache
 market.py            SPY/VIX market overlay

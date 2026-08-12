@@ -84,6 +84,21 @@ class DataStore:
             "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
             (key, str(value)))
 
+    def get_meta_json(self, key):
+        with self._lock:
+            raw = self._meta_get(key)
+        if not raw:
+            return None
+        try:
+            return json.loads(raw)
+        except ValueError:
+            return None
+
+    def set_meta_json(self, key, value):
+        with self._lock:
+            self._meta_set(key, json.dumps(value))
+            self._conn.commit()
+
     # -- prices ---------------------------------------------------------
 
     def cached_history(self, symbol):
@@ -98,9 +113,11 @@ class DataStore:
         df.index = pd.to_datetime(df.pop('date'))
         return df
 
-    def store_history(self, symbol, df, replace=False):
+    def store_history(self, symbol, df, replace=False, mark_fresh=False):
         """Upsert OHLCV rows. `replace` drops existing rows first (used for
-        the weekly full refresh so adjusted prices stay consistent)."""
+        the weekly full refresh so adjusted prices stay consistent).
+        `mark_fresh` stamps the fetch metadata so get_history serves this
+        data without trying the network - used by tests and imports."""
         if df is None or df.empty:
             return
         records = []
@@ -123,6 +140,10 @@ class DataStore:
                 "open=excluded.open, high=excluded.high, low=excluded.low, "
                 "close=excluded.close, volume=excluded.volume",
                 records)
+            if mark_fresh:
+                now = time.time()
+                self._meta_set(f'fetch:{symbol}', now)
+                self._meta_set(f'full:{symbol}', now)
             self._conn.commit()
 
     def get_history(self, symbol, downloader=None):

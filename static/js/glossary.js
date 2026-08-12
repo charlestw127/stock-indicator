@@ -24,6 +24,11 @@ const METRIC_HELP = {
     marketRisk: 'Market-wide weather, not specific to any stock: SPY versus its 200-day average (is the broad market in an uptrend) plus the VIX level. Risk-off means be defensive regardless of individual scores. This banner does not change any ranks.',
     vix: 'VIX: the market’s expected volatility over the next 30 days, implied by S&P 500 option prices - the fear gauge. The percentile shows where today sits versus the last 5 years.',
     movers: 'Names whose rank jumped 3 or more places since the previous scan - where the model changed its mind fastest.',
+    recommendation: 'Selection uses the 1m composite score because that is the configuration the walk-forward backtest validated. The 1d/1w columns are entry-timing context only. Deliberately slow-moving: existing picks are kept while they still rank well, and highly correlated near-duplicates are excluded. Max 20 names - beyond that a portfolio just tracks the index.',
+    recWeight: 'Inverse-volatility weight with a mild score tilt, capped at 15% per name. Calmer names get more capital so each position contributes roughly similar risk - a large weight means low risk, not high conviction.',
+    recTiming: 'Tactical scores for entry timing: green = favorable to buy now, red = wait. A name can be a strong hold (1m) while being short-term stretched (1d) - that suggests waiting for a dip rather than skipping it.',
+    recChanges: 'Names added or dropped versus the previous recommendation. Sticky by design: an incumbent survives until it falls well down the rankings, so small score wiggles do not force trades.',
+    recVsCurrent: 'The reposition check: recommended names you do not hold, and holdings that no longer make the list. A name leaving the list is a prompt to review, not an automatic sell - it may simply have slipped in relative rank.',
 };
 
 // Matched by substring against each signal string.

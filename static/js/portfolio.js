@@ -101,7 +101,7 @@ document.addEventListener("DOMContentLoaded", function() {
             },
             body: JSON.stringify({
                 symbols: portfolioData.symbols.split(',').map(s => s.trim()),
-                periodsToAnalyze: ['1w', '1m', '6m', '1y', '5y'],
+                periodsToAnalyze: ['1d', '1w', '1m', '6m', '1y'],
                 isPortfolio: true
             })
         })
@@ -116,7 +116,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 Object.keys(data.symbols).map(sym => ({
                     symbol: sym, 
                     lastPrices: Object.keys(data.symbols[sym])
-                        .filter(k => ['1w', '1m', '6m', '1y', '5y'].includes(k))
+                        .filter(k => ['1d', '1w', '1m', '6m', '1y'].includes(k))
                         .map(p => ({ 
                             period: p, 
                             price: data.symbols[sym][p]?.lastPrice 
@@ -292,8 +292,8 @@ document.addEventListener("DOMContentLoaded", function() {
     function findLastPrice(data, symbol) {
         if (!data.symbols[symbol]) return null;
         
-        // Priority order to check for prices (1w is likely most recent)
-        const timeframes = ['1w', '1m', '6m', '1y', '5y'];
+        // Priority order to check for prices (1d is likely most recent)
+        const timeframes = ['1d', '1w', '1m', '6m', '1y'];
         
         // First check if 1w has price
         for (const period of timeframes) {
@@ -344,11 +344,11 @@ document.addEventListener("DOMContentLoaded", function() {
                         <tr>
                             <th>Symbol</th>
                             <th>Position</th>
+                            <th>1d</th>
                             <th>1w</th>
                             <th>1m</th>
                             <th>6m</th>
                             <th>1y</th>
-                            <th>5y</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -426,7 +426,7 @@ document.addEventListener("DOMContentLoaded", function() {
             `;
             
             // Add cells for time periods
-            ['1w', '1m', '6m', '1y', '5y'].forEach(period => {
+            ['1d', '1w', '1m', '6m', '1y'].forEach(period => {
                 const periodData = data.symbols[symbol][period];
                 
                 if (!periodData || periodData.error) {

@@ -1,11 +1,81 @@
 {
+  "1d_score_2d_hold": {
+    "ic": {
+      "composite": {
+        "mean": -0.0087,
+        "std": 0.2126,
+        "ir": -0.041,
+        "t_stat": -0.8,
+        "pct_positive": 49.3,
+        "n": 377
+      },
+      "trend": {
+        "mean": -0.0033,
+        "std": 0.2341,
+        "ir": -0.014,
+        "t_stat": -0.28,
+        "pct_positive": 49.1,
+        "n": 377
+      },
+      "momentum": {
+        "mean": 0.0008,
+        "std": 0.223,
+        "ir": 0.004,
+        "t_stat": 0.07,
+        "pct_positive": 50.9,
+        "n": 377
+      },
+      "mean_reversion": {
+        "mean": 0.0031,
+        "std": 0.1965,
+        "ir": 0.016,
+        "t_stat": 0.31,
+        "pct_positive": 52.0,
+        "n": 377
+      },
+      "volume_flow": {
+        "mean": -0.0003,
+        "std": 0.2087,
+        "ir": -0.002,
+        "t_stat": -0.03,
+        "pct_positive": 49.6,
+        "n": 377
+      },
+      "quality": {
+        "mean": -0.0137,
+        "std": 0.2105,
+        "ir": -0.065,
+        "t_stat": -1.26,
+        "pct_positive": 49.9,
+        "n": 377
+      }
+    },
+    "composite_stats": {
+      "cagr": 9.32,
+      "ann_vol": 15.03,
+      "sharpe": 0.67,
+      "max_drawdown": -16.23,
+      "hit_rate": 55.7,
+      "total_return": 30.6,
+      "avg_turnover": 0.429
+    },
+    "spy_stats": {
+      "cagr": 21.26,
+      "ann_vol": 14.5,
+      "sharpe": 1.4,
+      "max_drawdown": -17.27,
+      "hit_rate": 59.7,
+      "total_return": 78.0
+    },
+    "n_rebalances": 377
+  },
   "1w_score_5d_hold": {
     "ic": {
       "composite": {
-        "mean": 0.0124,
-        "std": 0.227,
-        "ir": 0.055,
-        "t_stat": 0.67,
+        "mean": 0.0137,
+        "std": 0.2264,
+        "ir": 0.061,
+        "t_stat": 0.74,
         "pct_positive": 53.6,
         "n": 151
       },
@@ -51,12 +121,12 @@
       }
     },
     "composite_stats": {
-      "cagr": 27.63,
-      "ann_vol": 14.59,
-      "sharpe": 1.75,
-      "max_drawdown": -8.02,
-      "hit_rate": 59.6,
-      "total_return": 107.7,
+      "cagr": 28.23,
+      "ann_vol": 14.5,
+      "sharpe": 1.79,
+      "max_drawdown": -7.85,
+      "hit_rate": 57.6,
+      "total_return": 110.7,
       "avg_turnover": 0.43
     },
     "spy_stats": {
@@ -142,11 +212,11 @@
   "6m_score_63d_hold": {
     "ic": {
       "composite": {
-        "mean": 0.0888,
-        "std": 0.1734,
-        "ir": 0.512,
-        "t_stat": 1.7,
-        "pct_positive": 72.7,
+        "mean": 0.109,
+        "std": 0.1775,
+        "ir": 0.614,
+        "t_stat": 2.04,
+        "pct_positive": 81.8,
         "n": 11
       },
       "trend": {
@@ -191,13 +261,13 @@
       }
     },
     "composite_stats": {
-      "cagr": 28.9,
-      "ann_vol": 12.75,
-      "sharpe": 2.12,
-      "max_drawdown": -4.7,
+      "cagr": 34.37,
+      "ann_vol": 14.85,
+      "sharpe": 2.13,
+      "max_drawdown": -3.56,
       "hit_rate": 81.8,
-      "total_return": 101.0,
-      "avg_turnover": 0.613
+      "total_return": 125.3,
+      "avg_turnover": 0.569
     },
     "spy_stats": {
       "cagr": 21.17,

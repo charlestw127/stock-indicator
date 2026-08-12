@@ -45,12 +45,33 @@ def portfolio_risk(positions, store, benchmark='SPY'):
         return None
     weights = {sym: v / total for sym, v in values.items()}
 
+    out = risk_from_weights(weights, store, benchmark)
+    if out is None:
+        return {'total_value': round(total, 2), 'weights': _round_map(weights)}
+    out['total_value'] = round(total, 2)
+    return out
+
+
+def risk_from_weights(weights, store, benchmark='SPY'):
+    """Risk summary for a {symbol: weight} book (weights sum to ~1)."""
+    closes = {}
+    for sym in weights:
+        try:
+            hist = store.get_history(sym)
+        except Exception as e:
+            logger.warning("no history for %s: %s", sym, e)
+            continue
+        if not hist.empty:
+            closes[sym] = hist['Close'].astype(float)
+    if not closes:
+        return None
+
     rets = pd.DataFrame({
-        sym: close.pct_change() for sym, _, close in holdings
+        sym: close.pct_change() for sym, close in closes.items()
     }).dropna(how='all').iloc[-RET_WINDOW:]
     rets = rets.dropna(axis=1, thresh=int(len(rets) * 0.6))
     if rets.empty or len(rets) < 20:
-        return {'total_value': round(total, 2), 'weights': _round_map(weights)}
+        return None
 
     w = np.array([weights.get(c, 0.0) for c in rets.columns])
     if w.sum() > 0:
@@ -91,7 +112,6 @@ def portfolio_risk(positions, store, benchmark='SPY'):
             top_pair = {'symbols': [s1, s2], 'correlation': round(float(c), 2)}
 
     return {
-        'total_value': round(total, 2),
         'weights': _round_map(weights),
         'beta': round(beta, 2) if beta is not None else None,
         'ann_vol': round(ann_vol, 1),

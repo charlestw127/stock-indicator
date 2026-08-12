@@ -9,7 +9,7 @@ let analysisResults = {};
 let refreshInterval = 1800; // 30 minutes in seconds
 let countdown = refreshInterval;
 let intervalId = null;
-let periodsToAnalyze = ['1w', '1m', '6m', '1y', '5y'];
+let periodsToAnalyze = ['1d', '1w', '1m', '6m', '1y'];
 let currentSort = {
     column: 'symbol', // Default sort by symbol
     direction: 'asc'  // Default ascending
@@ -153,10 +153,11 @@ function buildRowHtml(row) {
 
     // Short/medium-term ranks drive the action call
     const shortTermRank = Math.min(
-        row.periods['1w']?.rank || 5,
-        row.periods['1m']?.rank || 5
+        row.periods['1d']?.rank || 5,
+        row.periods['1w']?.rank || 5
     );
     const mediumTermRank = Math.min(
+        row.periods['1m']?.rank || 5,
         row.periods['6m']?.rank || 5,
         row.periods['1y']?.rank || 5
     );
@@ -434,7 +435,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 },
                 body: JSON.stringify({
                     symbols,
-                    periodsToAnalyze: ['1w', '1m', '6m', '1y', '5y']
+                    periodsToAnalyze: periodsToAnalyze
                 })
             });
 
@@ -645,6 +646,11 @@ document.addEventListener("DOMContentLoaded", function() {
         // Set the HTML content
         resultsArea.innerHTML = html;
         initTooltips(resultsArea);
+
+        // Keep the recommended portfolio in sync with fresh scans
+        if (typeof window.loadRecommendation === 'function') {
+            window.loadRecommendation();
+        }
 
         // Update the sort icon for current sort
         updateSortIcon(currentSort.column, currentSort.direction);

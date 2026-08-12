@@ -33,18 +33,20 @@ from quant_engine import analyze_symbol
 from data_store import DataStore
 from market import market_overlay
 from portfolio_risk import portfolio_risk
+from recommender import recommend
 import fundamentals as fnd
 from utils import time_period_to_start_date
 from templates.base import BASE_TEMPLATE
 
 CONFIG_FILE = 'config.json'
-ALL_PERIODS = ['1w', '1m', '6m', '1y', '5y']
+ALL_PERIODS = ['1d', '1w', '1m', '6m', '1y']
 
 DEFAULT_CONFIG = {
     "settings": {
         "refreshInterval": 1800,
         "hideNonBuys": True,
-        "hideRanksAbove": 7
+        "hideRanksAbove": 7,
+        "recommendationSize": 20
     },
     "watchlist": {
         "symbols": "AAPL,MSFT,GOOGL,AMZN,NVDA,AMD,INTC,TSM,CRM,ADBE,JPM,BAC,GS,V,MA,BLK,JNJ,PFE,MRNA,UNH,CVS,COST,WMT,TGT,MCD,SBUX,NKE,CAT,DE,BA,GE,XOM,CVX,NEE,TSLA,F,GM,T,VZ,NFLX,DIS,ETSY,SHOP,BABA,COIN,ABNB,HOOD,PLTR,U,SNAP,PINS,BRK-B,BRK-A,SPY,QQQ,DIA,IWM,VTI,XLF,XLK,XLE,XLV,XLI,XLP,XLY,EFA,EEM,FXI,EWJ,TLT,HYG,AGG,GLD,SLV,USO,VXX,SH,ARKK,ICLN,SOXX,HACK,SMH"
@@ -66,7 +68,9 @@ logger = logging.getLogger('stock_app')
 
 app = Flask(__name__)
 store = DataStore()
-scan_lock = threading.Lock()
+# reentrant: _serve_watchlist holds it across its cache check + scan so two
+# simultaneous page loads don't both run a full scan
+scan_lock = threading.RLock()
 
 
 def load_config():
@@ -415,27 +419,29 @@ def analyze_stocks():
 
 def _serve_watchlist(symbols, periods, config):
     """Serve from the last stored run when it is fresh and covers the
-    request; otherwise scan now and store the result."""
-    max_age = int(config['settings'].get('refreshInterval', 1800))
-    latest = store.latest_run(max_age_seconds=max_age)
-    if latest:
-        run_id, ts, universe, stored = latest
-        if set(symbols) <= set(universe) and \
-                all(_has_period(stored, universe, p) for p in periods):
-            results = {
-                'symbols': {s: stored['symbols'][s] for s in symbols
-                            if s in stored.get('symbols', {})},
-                'movers': stored.get('movers', []),
-                'cached': True,
-                'asOf': dt.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M'),
-            }
-            print(f"  served from run {run_id} ({results['asOf']})")
-            return results
+    request; otherwise scan now and store the result. The lock spans the
+    cache check so concurrent page loads don't both trigger a full scan."""
+    with scan_lock:
+        max_age = int(config['settings'].get('refreshInterval', 1800))
+        latest = store.latest_run(max_age_seconds=max_age)
+        if latest:
+            run_id, ts, universe, stored = latest
+            if set(symbols) <= set(universe) and \
+                    all(_has_period(stored, universe, p) for p in periods):
+                results = {
+                    'symbols': {s: stored['symbols'][s] for s in symbols
+                                if s in stored.get('symbols', {})},
+                    'movers': stored.get('movers', []),
+                    'cached': True,
+                    'asOf': dt.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M'),
+                }
+                print(f"  served from run {run_id} ({results['asOf']})")
+                return results
 
-    results = run_scan(symbols, periods)
-    results['movers'] = _compute_movers(results)
-    store.save_run(symbols, results)
-    return results
+        results = run_scan(symbols, periods)
+        results['movers'] = _compute_movers(results)
+        store.save_run(symbols, results)
+        return results
 
 
 def _has_period(stored, universe, period):
@@ -444,6 +450,43 @@ def _has_period(stored, universe, period):
         if isinstance(periods, dict) and period in periods:
             return True
     return False
+
+
+@app.route('/api/recommendation', methods=['GET'])
+def recommendation():
+    """Suggested portfolio (max 20 names) built from the latest scan."""
+    try:
+        config = load_config()
+        symbols = watchlist_symbols(config)
+        latest = store.latest_run()
+        if latest:
+            _, ts, _, results = latest
+            as_of = dt.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M')
+        else:
+            results = run_scan(symbols, ALL_PERIODS)
+            store.save_run(symbols, results)
+            as_of = dt.datetime.now().strftime('%Y-%m-%d %H:%M')
+
+        prev = store.get_meta_json('last_recommendation') or {}
+        rec = recommend(
+            results, store,
+            max_names=config['settings'].get('recommendationSize', 20),
+            prev_symbols=prev.get('symbols'),
+            positions=config.get('portfolio', {}).get('positions'))
+        if rec is None:
+            return jsonify({'holdings': [], 'asOf': as_of,
+                            'note': 'No names with a positive score to recommend right now.'})
+
+        store.set_meta_json('last_recommendation', {
+            'symbols': [h['symbol'] for h in rec['holdings']],
+            'ts': time.time(),
+        })
+        rec['asOf'] = as_of
+        return _json_response(rec)
+    except Exception as e:
+        logger.error("error in recommendation: %s", e)
+        logger.error(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/history/<symbol>', methods=['GET'])
