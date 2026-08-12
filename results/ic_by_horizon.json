@@ -1,0 +1,212 @@
+{
+  "1w_score_5d_hold": {
+    "ic": {
+      "composite": {
+        "mean": 0.0124,
+        "std": 0.227,
+        "ir": 0.055,
+        "t_stat": 0.67,
+        "pct_positive": 53.6,
+        "n": 151
+      },
+      "trend": {
+        "mean": 0.0005,
+        "std": 0.2312,
+        "ir": 0.002,
+        "t_stat": 0.03,
+        "pct_positive": 50.3,
+        "n": 151
+      },
+      "momentum": {
+        "mean": 0.008,
+        "std": 0.2253,
+        "ir": 0.036,
+        "t_stat": 0.44,
+        "pct_positive": 51.7,
+        "n": 151
+      },
+      "mean_reversion": {
+        "mean": -0.0013,
+        "std": 0.2148,
+        "ir": -0.006,
+        "t_stat": -0.07,
+        "pct_positive": 49.7,
+        "n": 151
+      },
+      "volume_flow": {
+        "mean": 0.0053,
+        "std": 0.2055,
+        "ir": 0.026,
+        "t_stat": 0.32,
+        "pct_positive": 52.3,
+        "n": 151
+      },
+      "quality": {
+        "mean": 0.0179,
+        "std": 0.2349,
+        "ir": 0.076,
+        "t_stat": 0.94,
+        "pct_positive": 53.6,
+        "n": 151
+      }
+    },
+    "composite_stats": {
+      "cagr": 27.63,
+      "ann_vol": 14.59,
+      "sharpe": 1.75,
+      "max_drawdown": -8.02,
+      "hit_rate": 59.6,
+      "total_return": 107.7,
+      "avg_turnover": 0.43
+    },
+    "spy_stats": {
+      "cagr": 21.1,
+      "ann_vol": 13.29,
+      "sharpe": 1.51,
+      "max_drawdown": -13.98,
+      "hit_rate": 60.3,
+      "total_return": 77.5
+    },
+    "n_rebalances": 151
+  },
+  "1m_score_21d_hold": {
+    "ic": {
+      "composite": {
+        "mean": 0.02,
+        "std": 0.197,
+        "ir": 0.101,
+        "t_stat": 0.6,
+        "pct_positive": 57.1,
+        "n": 35
+      },
+      "trend": {
+        "mean": 0.0237,
+        "std": 0.2195,
+        "ir": 0.108,
+        "t_stat": 0.64,
+        "pct_positive": 57.1,
+        "n": 35
+      },
+      "momentum": {
+        "mean": 0.0104,
+        "std": 0.2103,
+        "ir": 0.049,
+        "t_stat": 0.29,
+        "pct_positive": 51.4,
+        "n": 35
+      },
+      "mean_reversion": {
+        "mean": 0.0009,
+        "std": 0.2268,
+        "ir": 0.004,
+        "t_stat": 0.02,
+        "pct_positive": 45.7,
+        "n": 35
+      },
+      "volume_flow": {
+        "mean": 0.0126,
+        "std": 0.2101,
+        "ir": 0.06,
+        "t_stat": 0.35,
+        "pct_positive": 54.3,
+        "n": 35
+      },
+      "quality": {
+        "mean": 0.0137,
+        "std": 0.2081,
+        "ir": 0.066,
+        "t_stat": 0.39,
+        "pct_positive": 60.0,
+        "n": 35
+      }
+    },
+    "composite_stats": {
+      "cagr": 22.95,
+      "ann_vol": 19.28,
+      "sharpe": 1.18,
+      "max_drawdown": -12.97,
+      "hit_rate": 65.7,
+      "total_return": 82.7,
+      "avg_turnover": 0.684
+    },
+    "spy_stats": {
+      "cagr": 20.71,
+      "ann_vol": 12.0,
+      "sharpe": 1.64,
+      "max_drawdown": -8.99,
+      "hit_rate": 68.6,
+      "total_return": 73.1
+    },
+    "n_rebalances": 35
+  },
+  "6m_score_63d_hold": {
+    "ic": {
+      "composite": {
+        "mean": 0.0888,
+        "std": 0.1734,
+        "ir": 0.512,
+        "t_stat": 1.7,
+        "pct_positive": 72.7,
+        "n": 11
+      },
+      "trend": {
+        "mean": 0.1095,
+        "std": 0.1967,
+        "ir": 0.556,
+        "t_stat": 1.85,
+        "pct_positive": 72.7,
+        "n": 11
+      },
+      "momentum": {
+        "mean": 0.121,
+        "std": 0.187,
+        "ir": 0.647,
+        "t_stat": 2.15,
+        "pct_positive": 72.7,
+        "n": 11
+      },
+      "mean_reversion": {
+        "mean": -0.1363,
+        "std": 0.1721,
+        "ir": -0.792,
+        "t_stat": -2.63,
+        "pct_positive": 18.2,
+        "n": 11
+      },
+      "volume_flow": {
+        "mean": 0.111,
+        "std": 0.165,
+        "ir": 0.672,
+        "t_stat": 2.23,
+        "pct_positive": 81.8,
+        "n": 11
+      },
+      "quality": {
+        "mean": 0.0775,
+        "std": 0.1489,
+        "ir": 0.52,
+        "t_stat": 1.73,
+        "pct_positive": 63.6,
+        "n": 11
+      }
+    },
+    "composite_stats": {
+      "cagr": 28.9,
+      "ann_vol": 12.75,
+      "sharpe": 2.12,
+      "max_drawdown": -4.7,
+      "hit_rate": 81.8,
+      "total_return": 101.0,
+      "avg_turnover": 0.613
+    },
+    "spy_stats": {
+      "cagr": 21.17,
+      "ann_vol": 12.05,
+      "sharpe": 1.69,
+      "max_drawdown": -5.78,
+      "hit_rate": 81.8,
+      "total_return": 69.6
+    },
+    "n_rebalances": 11
+  }
+}
