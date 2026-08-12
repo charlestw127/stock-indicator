@@ -547,35 +547,36 @@ document.addEventListener("DOMContentLoaded", function() {
             if (risk.most_correlated_pair) {
                 pairText = `${risk.most_correlated_pair.symbols.join(' / ')} (${risk.most_correlated_pair.correlation})`;
             }
+            const help = (key) => (typeof helpIcon === 'function') ? helpIcon(key) : '';
             html += `
             <div class="portfolio-metrics">
                 <h5>Portfolio Risk</h5>
                 <div class="metric-row">
-                    <div class="metric-label">Beta vs SPY</div>
+                    <div class="metric-label">Beta vs SPY${help('beta')}</div>
                     <div class="metric-value">${fmt(risk.beta)}</div>
                 </div>
                 <div class="metric-row">
-                    <div class="metric-label">Annualized Volatility</div>
+                    <div class="metric-label">Annualized Volatility${help('annVol')}</div>
                     <div class="metric-value">${fmt(risk.ann_vol, '%')}</div>
                 </div>
                 <div class="metric-row">
-                    <div class="metric-label">1-day VaR / CVaR (95%)</div>
+                    <div class="metric-label">1-day VaR / CVaR (95%)${help('varCvar')}</div>
                     <div class="metric-value">${fmt(risk.var_95, '%')} / ${fmt(risk.cvar_95, '%')}</div>
                 </div>
                 <div class="metric-row">
-                    <div class="metric-label">Effective Positions (1/HHI)</div>
+                    <div class="metric-label">Effective Positions (1/HHI)${help('effectivePositions')}</div>
                     <div class="metric-value">${fmt(risk.effective_positions)}</div>
                 </div>
                 <div class="metric-row">
-                    <div class="metric-label">Top Holding</div>
+                    <div class="metric-label">Top Holding${help('topHolding')}</div>
                     <div class="metric-value">${risk.top_holding ? `${risk.top_holding.symbol} (${risk.top_holding.weight}%)` : 'N/A'}</div>
                 </div>
                 <div class="metric-row">
-                    <div class="metric-label">Avg Pairwise Correlation</div>
+                    <div class="metric-label">Avg Pairwise Correlation${help('avgCorrelation')}</div>
                     <div class="metric-value">${fmt(risk.avg_correlation)}</div>
                 </div>
                 <div class="metric-row">
-                    <div class="metric-label">Most Correlated Pair</div>
+                    <div class="metric-label">Most Correlated Pair${help('correlatedPair')}</div>
                     <div class="metric-value">${pairText}</div>
                 </div>
             </div>`;
@@ -587,6 +588,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
         // Set HTML
         portfolioArea.innerHTML = html;
+        if (typeof initTooltips === 'function') {
+            initTooltips(portfolioArea);
+        }
     }
     
     /**

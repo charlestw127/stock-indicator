@@ -637,6 +637,49 @@
     border-color: var(--danger);
   }
   
+  /* Help tooltips */
+  .help-tip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background-color: var(--neutral-light);
+    color: var(--neutral);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    font-size: 0.65rem;
+    font-weight: 700;
+    margin-left: 5px;
+    cursor: help;
+    vertical-align: middle;
+    user-select: none;
+  }
+
+  .help-tip:hover {
+    background-color: var(--primary-light);
+    color: var(--primary);
+    border-color: var(--primary);
+  }
+
+  #dashboard-guide h6 {
+    font-weight: 600;
+    margin-top: 10px;
+    margin-bottom: 8px;
+  }
+
+  #dashboard-guide ul {
+    padding-left: 20px;
+  }
+
+  #dashboard-guide li {
+    margin-bottom: 4px;
+  }
+
+  .quant-signal {
+    cursor: help;
+  }
+
   /* Quant engine additions */
   .quant-regime {
     display: inline-block;

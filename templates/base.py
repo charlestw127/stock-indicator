@@ -69,6 +69,90 @@ BASE_TEMPLATE = """
             </div>
         </div>
 
+        <!-- Dashboard Guide Row -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>How to Read This Dashboard</span>
+                        <button class="btn btn-sm btn-outline-secondary" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#dashboard-guide">
+                            Show / Hide
+                        </button>
+                    </div>
+                    <div class="card-body collapse" id="dashboard-guide">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>The score and the rank</h6>
+                                <p class="small">
+                                    Every stock gets a <strong>composite score</strong> from -100 (bearish) to +100
+                                    (bullish), blended from five factor sleeves. Hover any cell in the table to see
+                                    the breakdown:
+                                </p>
+                                <ul class="small mb-3">
+                                    <li><strong>Trend</strong> - is the price structure pointing up? Moving-average
+                                        stack, adaptive average, regression slope, channel position.</li>
+                                    <li><strong>Momentum</strong> - how strong and <em>steady</em> recent gains are,
+                                        plus closeness to the 52-week high (names near highs tend to keep working).</li>
+                                    <li><strong>Mean reversion</strong> - the contrarian sleeve. Scores
+                                        <em>positive when the stock is beaten down</em> (stretched below average,
+                                        RSI low), because stretches tend to snap back.</li>
+                                    <li><strong>Volume flow</strong> - is real money confirming the move? Money Flow
+                                        Index, Chaikin Money Flow, OBV, price vs VWAP.</li>
+                                    <li><strong>Quality</strong> - risk-adjusted health: Sharpe ratio, drawdown
+                                        depth, volatility regime.</li>
+                                </ul>
+                                <p class="small">
+                                    The sleeve weights adapt to each stock's <strong>regime</strong>: trending names
+                                    lean on trend and momentum, choppy mean-reverting names lean on the contrarian
+                                    sleeve. High volatility applies a 20% conviction haircut.
+                                </p>
+                                <p class="small mb-0">
+                                    The <strong>rank (1-10)</strong> is the score's decile <em>within your
+                                    watchlist</em>: rank 1 = top 10% of names scanned. BUY/SELL labels come from the
+                                    rank, so they mean "looks best among these names", not a guaranteed prediction.
+                                    In a falling market, rank 1 can just mean least bad.
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>What drives the signal vs what is context</h6>
+                                <p class="small">
+                                    About twenty indicators feed the score through the five sleeves. Four regime
+                                    statistics (Hurst exponent, variance ratio, ADX, efficiency ratio) choose the
+                                    sleeve weights. Everything else on screen is deliberately <em>context</em>, not
+                                    part of the score:
+                                </p>
+                                <ul class="small mb-3">
+                                    <li><strong>Risk stats</strong> (Sharpe, max drawdown, beta, VaR/CVaR) describe
+                                        the consequences of holding - use them for position sizing.</li>
+                                    <li><strong>Fundamentals</strong> (PE, ROE, earnings dates) are shown but kept
+                                        out of the score because they cannot be backtested point-in-time here.</li>
+                                    <li><strong>The market banner</strong> (SPY vs 200-day average, VIX) sets overall
+                                        aggressiveness but never changes individual ranks.</li>
+                                    <li><strong>Signals</strong> are discrete events (squeeze fired, breakout,
+                                        oversold stretch). Hover any signal for what it means and how it tested.</li>
+                                </ul>
+                                <h6>Reading the risk numbers</h6>
+                                <ul class="small mb-3">
+                                    <li><strong>Sharpe</strong>: return per unit of risk. 1 is good, 2+ is excellent.</li>
+                                    <li><strong>MaxDD</strong>: worst peak-to-trough fall - the how-much-pain number.</li>
+                                    <li><strong>Beta</strong>: market sensitivity. 2 = double the market's swings.</li>
+                                    <li><strong>VaR 95%</strong>: on 19 of 20 days, losses stay smaller than this.</li>
+                                    <li><strong>CVaR</strong>: the average loss on the worst 1-in-20 days.</li>
+                                    <li><strong>Pairwise correlation</strong>: how much holdings move together -
+                                        near +1 means several tickers making one bet.</li>
+                                </ul>
+                                <p class="small text-muted mb-0">
+                                    Research tool, not investment advice. See the README for full backtests of every
+                                    sleeve and signal, including the ones that did not work.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Main Analysis Row -->
         <div class="row">
             <!-- Analysis Progress -->
@@ -186,6 +270,7 @@ BASE_TEMPLATE = """
     
     <!-- JavaScript files -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/glossary.js"></script>
     <script src="/static/js/main.js"></script>
     <script src="/static/js/config.js"></script>
     <script src="/static/js/portfolio.js"></script>

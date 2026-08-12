@@ -188,7 +188,7 @@ function buildRowHtml(row) {
         if (bits.length > 0) {
             fundHtml = `
                 <div class="detail-row">
-                    <span class="label">Profile:</span>
+                    <span class="label">Profile:${helpIcon('profile')}</span>
                     <span class="value">${bits.join(' · ')}</span>
                 </div>`;
         }
@@ -204,7 +204,7 @@ function buildRowHtml(row) {
                 `<span class="quant-regime">${r.volatility} vol</span>` : '');
         regimeHtml = `
             <div class="detail-row">
-                <span class="label">Regime:</span>
+                <span class="label">Regime:${helpIcon('regime')}</span>
                 <span class="value">
                     <span class="quant-regime ${regimeClass}">${r.trend}</span>
                     ${volBadge}
@@ -215,15 +215,19 @@ function buildRowHtml(row) {
             const k = q.risk;
             riskHtml = `
                 <div class="detail-row">
-                    <span class="label">Risk:</span>
-                    <span class="value">Sharpe ${fmtNum(k.sharpe, 2)} · MaxDD ${fmtNum(k.max_drawdown, 0)}% · β ${fmtNum(k.beta, 2)}</span>
+                    <span class="label">Risk:${helpIcon('risk')}</span>
+                    <span class="value">
+                        <span title="${METRIC_HELP.sharpe}">Sharpe ${fmtNum(k.sharpe, 2)}</span> ·
+                        <span title="${METRIC_HELP.maxdd}">MaxDD ${fmtNum(k.max_drawdown, 0)}%</span> ·
+                        <span title="${METRIC_HELP.beta}">β ${fmtNum(k.beta, 2)}</span>
+                    </span>
                 </div>`;
         }
 
         const signals = (q.signals || []).concat((fund && fund.signals) || []).slice(0, 4);
         if (signals.length > 0) {
             signalsHtml = `<div class="quant-signals">` +
-                signals.map(s => `<div class="quant-signal">${s}</div>`).join('') +
+                signals.map(s => `<div class="quant-signal" title="${signalHelp(s)}">${s}</div>`).join('') +
                 `</div>`;
         }
     }
@@ -583,15 +587,15 @@ document.addEventListener("DOMContentLoaded", function() {
                 parts.push(`SPY ${mkt.spy_dist_200dma >= 0 ? '+' : ''}${mkt.spy_dist_200dma}% vs 200dma`);
             }
             if (mkt.vix !== null && mkt.vix !== undefined) {
-                parts.push(`VIX ${mkt.vix}`);
+                parts.push(`<span title="${METRIC_HELP.vix}">VIX ${mkt.vix}</span>`);
             }
             const note = mkt.note ? ` — ${mkt.note}` : '';
-            preamble += `<div class="alert ${cls} py-2 mb-2">${parts.join(' | ')}${note}</div>`;
+            preamble += `<div class="alert ${cls} py-2 mb-2">${parts.join(' | ')}${note}${helpIcon('marketRisk')}</div>`;
         }
         if (data.movers && data.movers.length > 0) {
             const items = data.movers.slice(0, 6)
                 .map(m => `${m.symbol} ${m.period}: ${m.from} → ${m.to}`).join(', ');
-            preamble += `<div class="text-muted small mb-2">Rank movers since last scan: ${items}</div>`;
+            preamble += `<div class="text-muted small mb-2">Rank movers since last scan:${helpIcon('movers')} ${items}</div>`;
         }
         if (data.cached && data.asOf) {
             preamble += `<div class="text-muted small mb-2">Served from background scan at ${data.asOf}</div>`;
@@ -611,7 +615,8 @@ document.addEventListener("DOMContentLoaded", function() {
         // Add column headers for each time period
         periodsToAnalyze.forEach(period => {
             html += `
-                <th class="sortable" data-column="${period}">
+                <th class="sortable" data-column="${period}"
+                    title="Signal at the ${period} horizon. ${METRIC_HELP.rank} Hover any cell for the factor breakdown; click header to sort.">
                     ${period}
                     <span class="sort-icon" id="sort-${period}">↕</span>
                 </th>`;
@@ -619,7 +624,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
         // Add action column header
         html += `
-            <th class="sortable" data-column="action">
+            <th class="sortable" data-column="action"
+                title="Suggested action from the short-term (1w/1m) and medium-term (6m/1y) ranks, with regime, fundamentals, risk stats and active signals. Hover the ? icons and signals for explanations.">
                 Action
                 <span class="sort-icon" id="sort-action">↕</span>
             </th>
@@ -638,6 +644,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
         // Set the HTML content
         resultsArea.innerHTML = html;
+        initTooltips(resultsArea);
 
         // Update the sort icon for current sort
         updateSortIcon(currentSort.column, currentSort.direction);
@@ -711,6 +718,7 @@ document.addEventListener("DOMContentLoaded", function() {
         if (!tbody) return;
 
         tbody.innerHTML = rowsData.map(buildRowHtml).join('');
+        initTooltips(tbody);
     }
 
     /**
