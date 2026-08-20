@@ -29,11 +29,13 @@ from strategies import (
     get_manual_recommendation, get_score_from_indicators,
     calculate_percentile_rank, rank_to_recommendation,
 )
-from quant_engine import analyze_symbol
+from quant_engine import analyze_symbol, load_calibrated_weights
 from data_store import DataStore
 from market import market_overlay
 from portfolio_risk import portfolio_risk
 from recommender import recommend
+from checks import run_checks, review, log_flags
+from brief import generate
 import fundamentals as fnd
 from utils import time_period_to_start_date
 from templates.base import BASE_TEMPLATE
@@ -68,6 +70,10 @@ logger = logging.getLogger('stock_app')
 
 app = Flask(__name__)
 store = DataStore()
+# Install calibrated per-regime sleeve weights if regime_calibrate.py has
+# produced a set that beat the hand-set prior out of sample. Missing file =
+# the documented default stays in force.
+_active_weights = load_calibrated_weights()
 # reentrant: _serve_watchlist holds it across its cache check + scan so two
 # simultaneous page loads don't both run a full scan
 scan_lock = threading.RLock()
@@ -468,12 +474,16 @@ def recommendation():
             as_of = dt.datetime.now().strftime('%Y-%m-%d %H:%M')
 
         prev = store.get_meta_json('last_recommendation') or {}
+        market = market_overlay(store)
+        if request.args.get('gate', 'on') == 'off':
+            market = dict(market, exposure=1.0)
         rec = recommend(
             results, store,
             max_names=config['settings'].get('recommendationSize', 20),
             prev_symbols=prev.get('symbols'),
             positions=config.get('portfolio', {}).get('positions'),
-            base_value=request.args.get('base', type=float))
+            base_value=request.args.get('base', type=float),
+            market=market)
         if rec is None:
             return jsonify({'holdings': [], 'asOf': as_of,
                             'note': 'No names with a positive score to recommend right now.'})
@@ -505,6 +515,85 @@ def market_state():
     return jsonify(market_overlay(store))
 
 
+@app.route('/api/review', methods=['GET'])
+def review_recommendation():
+    """Deterministic risk checks on the current recommendation, ranked and
+    explained by an LLM if one is reachable.
+
+    The checks are computed in Python; the model only ranks and narrates
+    them and cannot change whether the review blocks. See checks.py for why.
+    """
+    try:
+        config = load_config()
+        latest = store.latest_run()
+        if not latest:
+            return jsonify({'error': 'No scan yet. Load the dashboard first.'}), 404
+        _, _, _, results = latest
+        market = market_overlay(store)
+        prev = store.get_meta_json('last_recommendation') or {}
+        rec = recommend(
+            results, store,
+            max_names=config['settings'].get('recommendationSize', 20),
+            prev_symbols=prev.get('symbols'),
+            positions=config.get('portfolio', {}).get('positions'),
+            market=market)
+        if rec is None:
+            return jsonify({'checks': [], 'concerns': [], 'blocking': False,
+                            'summary': 'Nothing recommended right now.'})
+        use_llm = request.args.get('llm', 'on') != 'off'
+        checks = run_checks(rec, results=results, store=store, market=market)
+        out = review(rec, checks, use_llm=use_llm)
+        if request.args.get('log', 'on') != 'off':
+            log_flags(rec, out)
+        return _json_response(out)
+    except Exception as e:
+        logger.error("error in review: %s", e)
+        logger.error(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/brief', methods=['GET'])
+def morning_brief():
+    """Plain-language narration of the latest scan.
+
+    Every sentence is checked against the facts it cites before it is
+    returned; `rejected` lists what was thrown away and why. The brief adds
+    no information - it restates numbers the dashboard already shows.
+    """
+    try:
+        config = load_config()
+        latest = store.latest_run()
+        if not latest:
+            return jsonify({'error': 'No scan yet. Load the dashboard first.'}), 404
+        _, ts, _, results = latest
+        market = market_overlay(store)
+        prev = store.get_meta_json('last_recommendation') or {}
+        rec = recommend(
+            results, store,
+            max_names=config['settings'].get('recommendationSize', 20),
+            prev_symbols=prev.get('symbols'),
+            positions=config.get('portfolio', {}).get('positions'),
+            market=market)
+        backtest = None
+        path = os.path.join('results', 'backtest_summary.json')
+        if os.path.exists(path):
+            try:
+                with open(path) as f:
+                    backtest = json.load(f)
+            except (OSError, ValueError):
+                backtest = None
+        payload = generate(
+            results=results, rec=rec, market=market, backtest=backtest,
+            movers=results.get('movers'),
+            use_llm=request.args.get('llm', 'on') != 'off')
+        payload['asOf'] = dt.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M')
+        return _json_response(payload)
+    except Exception as e:
+        logger.error("error in brief: %s", e)
+        logger.error(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/backtest', methods=['GET'])
 def backtest_results():
     path = os.path.join('results', 'backtest_summary.json')
@@ -517,6 +606,8 @@ def backtest_results():
 if __name__ == '__main__':
     print("stock scanner starting on http://localhost:5000")
     print("background refresher scans the watchlist on the configured interval")
+    if os.path.exists(os.path.join('results', 'regime_weights.json')):
+        print("using calibrated regime weights from results/regime_weights.json")
     logger.info("starting stock scanner")
     if os.environ.get('WERKZEUG_RUN_MAIN') == 'true' or not app.debug:
         start_background_refresher()
