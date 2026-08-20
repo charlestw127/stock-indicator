@@ -1,0 +1,136 @@
+{
+  "weights": {
+    "trending": {
+      "mean_reversion": 0.04,
+      "momentum": 0.14,
+      "quality": 0.1531,
+      "trend": 0.2793,
+      "volume_flow": 0.3877
+    },
+    "mean-reverting": {
+      "mean_reversion": 0.38,
+      "momentum": 0.12,
+      "quality": 0.2,
+      "trend": 0.1,
+      "volume_flow": 0.2
+    },
+    "mixed": {
+      "mean_reversion": 0.411,
+      "momentum": 0.1655,
+      "quality": 0.1,
+      "trend": 0.2142,
+      "volume_flow": 0.1093
+    }
+  },
+  "labeler": "classifier",
+  "shrinkage": 0.5,
+  "period": "1m",
+  "step": 21,
+  "discovery_end": "2025-02-19",
+  "validation_end": "2026-08-20",
+  "n_samples": 702,
+  "diagnostics": {
+    "trending": {
+      "n_samples": 103,
+      "fitted": true,
+      "raw": {
+        "mean_reversion": 0.0,
+        "momentum": 0.0,
+        "quality": 0.1561,
+        "trend": 0.2385,
+        "volume_flow": 0.6054
+      }
+    },
+    "mean-reverting": {
+      "n_samples": 22,
+      "fitted": false,
+      "raw": null
+    },
+    "mixed": {
+      "n_samples": 577,
+      "fitted": true,
+      "raw": {
+        "mean_reversion": 0.622,
+        "momentum": 0.1311,
+        "quality": 0.0,
+        "trend": 0.2084,
+        "volume_flow": 0.0385
+      }
+    }
+  },
+  "comparison": {
+    "prior_discovery": {
+      "ic": {
+        "mean": 0.0069,
+        "std": 0.3404,
+        "ir": 0.02,
+        "t_stat": 0.11,
+        "pct_positive": 51.9,
+        "n": 27
+      },
+      "stats": {
+        "cagr": 15.52,
+        "ann_vol": 18.41,
+        "sharpe": 0.88,
+        "max_drawdown": -14.85,
+        "hit_rate": 63.0,
+        "total_return": 38.3
+      }
+    },
+    "prior_validation": {
+      "ic": {
+        "mean": -0.056,
+        "std": 0.2384,
+        "ir": -0.235,
+        "t_stat": -0.97,
+        "pct_positive": 41.2,
+        "n": 17
+      },
+      "stats": {
+        "cagr": 23.12,
+        "ann_vol": 29.56,
+        "sharpe": 0.84,
+        "max_drawdown": -6.96,
+        "hit_rate": 64.7,
+        "total_return": 34.3
+      }
+    },
+    "calibrated_discovery": {
+      "ic": {
+        "mean": 0.0473,
+        "std": 0.2618,
+        "ir": 0.181,
+        "t_stat": 0.94,
+        "pct_positive": 59.3,
+        "n": 27
+      },
+      "stats": {
+        "cagr": 34.09,
+        "ann_vol": 20.93,
+        "sharpe": 1.52,
+        "max_drawdown": -15.4,
+        "hit_rate": 74.1,
+        "total_return": 93.5
+      }
+    },
+    "calibrated_validation": {
+      "ic": {
+        "mean": -0.088,
+        "std": 0.2514,
+        "ir": -0.35,
+        "t_stat": -1.44,
+        "pct_positive": 47.1,
+        "n": 17
+      },
+      "stats": {
+        "cagr": 6.8,
+        "ann_vol": 19.56,
+        "sharpe": 0.44,
+        "max_drawdown": -7.88,
+        "hit_rate": 64.7,
+        "total_return": 9.8
+      }
+    }
+  },
+  "beat_prior_out_of_sample": false
+}

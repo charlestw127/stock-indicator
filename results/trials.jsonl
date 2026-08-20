@@ -1,0 +1,35 @@
+{"hash": "7f2808bc77e6", "config": {"job": "regime_calibrate", "labeler": "classifier", "states": 3, "shrinkage": 0.5, "period": "1m", "step": 21}, "metrics": {"prior_val_ic": -0.056, "calibrated_val_ic": -0.088}}
+{"hash": "ad70d1271c2a", "config": {"job": "factor_search", "expression": "ts_delta(high, 3) + absv(zscore(don_pos, 21))", "period": "1m", "step": 10}, "metrics": {"discovery_t": -0.347}}
+{"hash": "c2e01f370711", "config": {"job": "factor_search", "expression": "logv(mfi14) * stoch_k", "period": "1m", "step": 10}, "metrics": {"discovery_t": 0.743}}
+{"hash": "e8c0b5d8523d", "config": {"job": "factor_search", "expression": "mom_12_1 + tanh(ts_sum(mfi14, 3))", "period": "1m", "step": 10}, "metrics": {"discovery_t": 0.895}}
+{"hash": "878662a3f97f", "config": {"job": "factor_search", "expression": "ts_std(ts_min(rel_vol, 21), 252) - sign(ts_rank(dist_52, 20))", "period": "1m", "step": 10}, "metrics": {"discovery_t": 0.475}}
+{"hash": "eb5ab4dd3849", "config": {"job": "factor_search", "expression": "tanh(ts_max(rv21, 63)) + logv(ts_rank(rel_vol, 63))", "period": "1m", "step": 10}, "metrics": {"discovery_t": -0.694}}
+{"hash": "3542af05f964", "config": {"job": "factor_search", "expression": "ts_rank(sign(dist_52), 42) * kama10", "period": "1m", "step": 10}, "metrics": {"discovery_t": -0.567}}
+{"hash": "5ce159a31ef7", "config": {"job": "factor_search", "expression": "sign(tanh(dist_52)) + kama10", "period": "1m", "step": 10}, "metrics": {"discovery_t": -0.531}}
+{"hash": "3f4c5768fee3", "config": {"job": "factor_search", "expression": "sign(macd_hist) + ts_mean(stoch_d, 3)", "period": "1m", "step": 10}, "metrics": {"discovery_t": 1.542}}
+{"hash": "21c5d7fd096a", "config": {"job": "factor_search", "expression": "ts_delta(zscore(ret1, 3), 20) * obv_z", "period": "1m", "step": 10}, "metrics": {"discovery_t": 0.523}}
+{"hash": "dbfa9338bec2", "config": {"job": "factor_search", "expression": "sign(sign(high)) * ts_max(absv(stoch_d), 126)", "period": "1m", "step": 10}, "metrics": {"discovery_t": 1.199}}
+{"hash": "4190882f91de", "config": {"job": "factor_search", "expression": "ts_max(absv(atr14), 63) + logv(stoch_d)", "period": "1m", "step": 10}, "metrics": {"discovery_t": 1.018}}
+{"hash": "a3c449dd9586", "config": {"job": "factor_search", "expression": "absv(logv(close)) - logv(adx14)", "period": "1m", "step": 10}, "metrics": {"discovery_t": -0.585}}
+{"hash": "8bb1c3c4d287", "config": {"job": "factor_search", "expression": "absv(tanh(obv_z)) - kama10", "period": "1m", "step": 10}, "metrics": {"discovery_t": 0.556}}
+{"hash": "d73229528e81", "config": {"job": "factor_search", "expression": "tanh(ts_sum(mfi14, 5)) / ts_delta(ts_rank(bbp20, 5), 42)", "period": "1m", "step": 10}, "metrics": {"discovery_t": -2.008}}
+{"hash": "57eff1dad8d5", "config": {"job": "factor_search", "expression": "rv21 + logv(rel_vol)", "period": "1m", "step": 10}, "metrics": {"discovery_t": 0.597}}
+{"hash": "68959d9be477", "config": {"job": "factor_search", "expression": "vwap_dev - logv(kama10)", "period": "1m", "step": 10}, "metrics": {"discovery_t": 0.725}}
+{"hash": "5da6ea68362f", "config": {"job": "factor_search", "expression": "close + tanh(ts_max(dist_52, 20))", "period": "1m", "step": 10}, "metrics": {"discovery_t": -0.537}}
+{"hash": "0f79c98def86", "config": {"job": "factor_search", "expression": "ts_min(ts_sum(macd_hist, 126), 42) / low", "period": "1m", "step": 10}, "metrics": {"discovery_t": -1.137}}
+{"hash": "c227c4ee3a13", "config": {"job": "factor_search", "expression": "ts_rank(ts_std(stoch_d, 5), 21) - tanh(obv_z)", "period": "1m", "step": 10}, "metrics": {"discovery_t": -1.356}}
+{"hash": "3153a530bb35", "config": {"job": "factor_search", "expression": "mom_12_1 * macd_hist", "period": "1m", "step": 10}, "metrics": {"discovery_t": 0.081}}
+{"hash": "08b614a3d0b1", "config": {"job": "factor_search", "expression": "ts_std(absv(obv_z), 21) * bbp20", "period": "1m", "step": 10}, "metrics": {"discovery_t": 0.732}}
+{"hash": "133eabb09752", "config": {"job": "factor_search", "expression": "ts_sum(ts_min(don_pos, 42), 20) / ts_std(ts_sum(adx14, 3), 5)", "period": "1m", "step": 10}, "metrics": {"discovery_t": null}}
+{"hash": "866317d8bb6e", "config": {"job": "factor_search", "expression": "ret1 / ts_sum(logv(high), 42)", "period": "1m", "step": 10}, "metrics": {"discovery_t": -1.384}}
+{"hash": "0637e1845be8", "config": {"job": "factor_search", "expression": "don_pos / adx14", "period": "1m", "step": 10}, "metrics": {"discovery_t": 0.584}}
+{"hash": "8375ca8a73c5", "config": {"job": "factor_search", "expression": "ts_max(absv(dist_52), 63) * low", "period": "1m", "step": 10}, "metrics": {"discovery_t": 1.246}}
+{"hash": "4abf6d35f7d5", "config": {"job": "factor_search", "expression": "ts_sum(ts_std(rel_vol, 10), 3) * ts_max(close, 21)", "period": "1m", "step": 10}, "metrics": {"discovery_t": -1.706}}
+{"hash": "33c6515b1236", "config": {"job": "factor_search", "expression": "sign(logv(stoch_k)) - absv(ts_delta(ret1, 126))", "period": "1m", "step": 10}, "metrics": {"discovery_t": -0.068}}
+{"hash": "bd6ddf4a9c63", "config": {"job": "factor_search", "expression": "tanh(ts_std(rel_vol, 3)) / ts_std(ts_delta(volume, 3), 63)", "period": "1m", "step": 10}, "metrics": {"discovery_t": -1.531}}
+{"hash": "5978e2bb20d0", "config": {"job": "factor_search", "expression": "logv(tanh(low)) - ts_sum(ts_delta(mom_12_1, 21), 10)", "period": "1m", "step": 10}, "metrics": {"discovery_t": -1.551}}
+{"hash": "efb5f639adab", "config": {"job": "factor_search", "expression": "ts_rank(ts_min(atr14, 10), 10) / tanh(tanh(adx14))", "period": "1m", "step": 10}, "metrics": {"discovery_t": -0.438}}
+{"hash": "6c4653e4dc32", "config": {"job": "factor_search", "expression": "ts_sum(zscore(don_pos, 63), 20) * close", "period": "1m", "step": 10}, "metrics": {"discovery_t": 1.941}}
+{"hash": "fcb66d2f11e0", "config": {"job": "factor_search", "expression": "sign(ts_rank(rel_vol, 5)) * absv(ts_min(atr14, 5))", "period": "1m", "step": 10}, "metrics": {"discovery_t": 0.616}}
+{"hash": "b94b248ce01f", "config": {"period": "1m", "step": 5, "years": 5.0, "top": 0.2, "weighting": "equal", "cost_bps": 0.0, "gate": false, "n_symbols": 83}, "metrics": {"status": "started"}}
+{"hash": "b94b248ce01f", "config": {"period": "1m", "step": 5, "years": 5.0, "top": 0.2, "weighting": "equal", "cost_bps": 0.0, "gate": false, "n_symbols": 83}, "metrics": {"composite_cagr": 24.58, "composite_sharpe": 1.38, "composite_ic": 0.0069}}

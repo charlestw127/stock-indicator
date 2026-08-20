@@ -26,6 +26,7 @@ results rather than feature lists.
 - [Agents](#agents)
 - [Results](#results)
   - [Results: agents](#results-agents)
+  - [Results: honesty checks](#results-honesty-checks)
   - [Results: information coefficients](#results-information-coefficients)
   - [Results: signal event studies](#results-signal-event-studies)
   - [Results: score deciles](#results-score-deciles)
@@ -101,6 +102,17 @@ from the Hurst exponent, variance ratio, ADX and Kaufman efficiency ratio:
 The idea: momentum signals get weight when the tape is persistent, stretch/reversion
 signals when it chops. Whether this earns its keep is examined in the results.
 
+Those fifteen numbers were picked by judgement. `regime_calibrate.py` now tries to
+replace them with estimates: it labels regimes (either with the classifier above or
+with a statistical jump model, `regime.py`), ridge-regresses forward returns on sleeve
+scores within each state, shrinks the result toward the hand table, and then tests it
+on a held-out window. It installs nothing unless the calibrated table wins there.
+
+So far it has not. On the first run the calibrated table looked far better on the
+discovery window (IC 0.047 vs 0.007) and came out **worse** on validation (-0.088 vs
+-0.056). That is textbook in-sample fitting, and the hand-set prior stayed in force -
+now for a measured reason rather than by default.
+
 ## Recommended portfolio
 
 The dashboard maintains a suggested long-only portfolio of at most 20 names
@@ -154,17 +166,27 @@ equal-weight, long-only.
 
 ## Results
 
+> **Read this first.** The results in this section are the original three-year run.
+> A later pass added transaction costs, a deflated Sharpe that counts every
+> configuration tried, a probability-of-backtest-overfitting statistic, a bull/bear
+> split and a permutation audit - the checks the methodology literature says decide
+> whether a backtest means anything (`docs/research-llm-agents.md`). Those checks
+> substantially undercut the headline below. The honest current numbers are in
+> [Results: honesty checks](#results-honesty-checks); the three-year run is kept
+> here because deleting the flattering version and keeping only the sober one would
+> be its own kind of dishonesty.
+
 Setup for the headline run: 83 symbols (the default watchlist: US large caps plus
 sector/asset-class ETFs), 3 years (2023-08 to 2026-08), scores at the 1m horizon,
 rebalanced every 5 sessions, top 20% held long-only, no transaction costs.
-Reproduce with `python backtest.py`.
+Reproduce with `python backtest.py --years 3`.
 
 The one-line version: $10,000 in the model became **$20,850** over the window,
 versus $18,680 for holding the whole watchlist equal-weight and $17,750 for SPY -
 with a worst drawdown of -9.2% against SPY's -14.0%. The equal-weight comparison is
 the honest one: it shows the model's selection added ~22 points beyond what the
 watchlist itself delivered. (Before costs, in one bull-market sample - see the
-caveats.)
+caveats.) **Over the full available history that 22-point gap disappears.**
 
 ### Results: agents
 
@@ -185,6 +207,56 @@ The composite beat both benchmarks on CAGR and had the shallowest drawdown of ev
 strategy (-9.2% vs -14.0% for SPY), which is what the volatility haircut and quality
 sleeve are there for. The pure trend sleeve made the most money but with deeper
 drawdowns. Mean reversion was the weakest stand-alone agent.
+
+### Results: honesty checks
+
+The default window is now the full cached history rather than three years, because an
+80-name cross-section needs every observation it can get. Over 83 symbols from
+2022-10-31 to 2026-08-10, same settings otherwise (`python backtest.py --years 10
+--null-audit 200`):
+
+| agent | CAGR % | Sharpe | max DD % | hit rate % | bull Sharpe | bear Sharpe |
+| --- | --- | --- | --- | --- | --- | --- |
+| composite | 24.58 | 1.38 | -17.89 | 61.1 | 1.39 | 1.27 |
+| trend | 27.9 | 1.43 | **-12.99** | 59.5 | 1.29 | 2.73 |
+| momentum | 28.0 | **1.57** | -14.40 | 61.1 | 1.44 | 2.59 |
+| mean_reversion | 24.17 | 1.24 | -16.39 | 60.5 | 1.15 | 1.91 |
+| volume_flow | 23.73 | 1.31 | -17.17 | 63.2 | 1.27 | 1.67 |
+| quality | 13.56 | 1.03 | -15.97 | 62.1 | 0.97 | 1.43 |
+| equal_weight | 24.59 | 1.50 | -17.48 | 62.6 | 1.21 | 3.10 |
+| spy | 21.78 | 1.40 | -18.56 | 61.1 | 1.20 | 2.60 |
+
+$10,000 became $22,900 in the composite and **$22,910 in the equal-weight
+watchlist**. Over the longer window the model's selection adds nothing over simply
+holding everything on the list. The +18.8 points over SPY is the watchlist, not the
+model.
+
+**Transaction costs.** Charged against measured turnover:
+
+| cost | 0 bps | 5 bps | 10 bps | 20 bps |
+| --- | --- | --- | --- | --- |
+| composite CAGR % | 24.58 | 22.28 | 20.02 | 15.63 |
+| composite Sharpe | 1.38 | 1.27 | 1.16 | 0.94 |
+
+**Multiple testing.** 34 configurations have been scored against this dataset
+(`results/trials.jsonl`), so the best-of-N t-statistic hurdle is 2.66. The composite's
+IC t-stat is **0.41**. It does not come close.
+
+**The permutation audit is the uncomfortable one.** Shuffle the forward returns within
+each rebalance date - destroying any real relationship while preserving each date's
+return distribution - and ask what the best of the six sleeves achieves anyway. Over
+200 permutations: mean 0.0084, 95th percentile **0.0170**. The composite's measured
+weekly IC of 0.016 sits inside that range. It was never evidence of ranking skill.
+
+**Probability of backtest overfitting: 0.67.** Across the six sleeves and 252
+combinatorial splits, the in-sample winner lands below the out-of-sample median two
+thirds of the time. Picking a best sleeve on past data does not predict which will
+lead next.
+
+What survives all of this: the composite is the only strategy whose Sharpe barely
+moves between regimes (1.39 bull, 1.27 bear) while every benchmark's swings hard. That
+supports the claim in the analysis below that the value here is portfolio
+construction, not stock picking - and it is now measured rather than asserted.
 
 ### Results: information coefficients
 
@@ -300,9 +372,15 @@ Read the results with these in mind:
 - **One regime.** 2023-2026 was mostly a rising market. Strategy CAGRs are inflated
   by beta; the equal-weight benchmark did 23% a year. Relative numbers (vs
   equal_weight and spy) are the ones to look at.
-- **No transaction costs.** At ~0.37 turnover per weekly rebalance, even a few bps
-  of cost per trade would visibly dent the composite's edge. The mean_reversion
-  sleeve (0.54 turnover) suffers most.
+- **Transaction costs are now measured, and they bite.** The composite goes from
+  24.58% CAGR gross to 20.02% at 10 bps and 15.63% at 20 bps. `--cost-bps` charges
+  them; the sweep runs on every backtest regardless. The mean_reversion sleeve (0.54
+  turnover) suffers most.
+- **The ranking skill does not clear its own null.** A permutation audit
+  (`--null-audit`) shuffles forward returns within each date and finds the best of the
+  six sleeves still reaches a mean IC of 0.0084, and 0.0170 at the 95th percentile.
+  The measured composite IC of 0.016 is inside that. Treat the score as a filter for
+  portfolio construction, not as a ranker.
 - **Survivorship-flavored universe.** The watchlist is today's list backfilled 5
   years. Names that would have been in it in 2023 and died since are absent.
 - **Small samples at long horizons.** The quarterly IC numbers rest on 11
@@ -340,11 +418,33 @@ regime, risk stats, fundamentals and active signals.
 Run the backtest:
 
 ```bash
-python backtest.py                         # defaults: 1m scores, 5d rebalance, 3y, top 20%
+python backtest.py                         # defaults: 1m scores, 5d rebalance, 10y, top 20%
 python backtest.py --period 6m --step 63   # quarterly variant
 python backtest.py --top 0.24 --weighting inv_vol   # the recommended-portfolio scheme
+python backtest.py --cost-bps 10 --gate    # net of costs, with the exposure gate on
+python backtest.py --null-audit 200        # what the sleeves score on shuffled returns
 python backtest.py --symbols AAPL,MSFT,NVDA --years 2
 ```
+
+Every run appends its configuration to `results/trials.jsonl`, and the deflated Sharpe
+and IC hurdles are computed from that count. That is the point: the more settings you
+try, the higher the bar a result has to clear. Deleting the ledger to get a friendlier
+number defeats the whole exercise.
+
+Research tooling added after the literature review in
+[docs/research-llm-agents.md](docs/research-llm-agents.md):
+
+```bash
+python regime_calibrate.py                 # estimate per-regime sleeve weights
+python regime_calibrate.py --labeler jump --apply   # jump model; installs only if it wins OOS
+python factor_search.py --propose 20       # ask Claude for factor expressions, then gate them
+python factor_search.py --propose 20 --random       # the same gate, no API key needed
+```
+
+`factor_search.py` needs `ANTHROPIC_API_KEY` (or an `ant auth login` profile) for the
+proposal step and falls back to sampling its grammar without one. `--random` is also
+the control: if LLM proposals are not measurably better than random ones, the call is
+not paying for itself.
 
 Run the tests:
 
@@ -361,6 +461,8 @@ API endpoints, if you want the data without the UI:
 | `GET /api/history/<symbol>?period=1m` | stored score/rank history for a symbol |
 | `GET /api/market` | SPY/VIX market regime overlay |
 | `GET /api/backtest` | latest backtest summary JSON |
+| `GET /api/brief` | plain-language brief; every sentence verified against the scan |
+| `GET /api/review` | risk checks on the recommendation, ranked and explained |
 
 ## Project structure
 
@@ -372,6 +474,13 @@ indicators.py        classic indicator set (RSI, MACD, stochastic, ADX, PSAR)
 strategies.py        cross-sectional percentile ranking
 recommender.py       recommended portfolio: selection, dedup, hysteresis, weights
 backtest.py          walk-forward harness, IC analysis, event studies, charts
+evaluation.py        deflated Sharpe, PBO, cost model, permutation audit, trial ledger
+regime.py            statistical jump model and per-state weight estimation
+regime_calibrate.py  offline regime-weight calibration experiment
+factor_search.py     LLM-proposed factor expressions, judged by the backtester
+checks.py            deterministic portfolio checks plus an LLM critic
+brief.py             grounded plain-language brief with per-sentence verification
+llm.py               Anthropic API wrapper; everything degrades without it
 data_store.py        SQLite price cache, run history, fundamentals cache
 market.py            SPY/VIX market overlay
 portfolio_risk.py    portfolio beta, vol, VaR, concentration, correlations
