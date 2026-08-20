@@ -14,6 +14,9 @@ Everything is causal (rolling/ewm/cumsum), so evaluating at bar i only sees
 data up to bar i.
 """
 
+import json
+import os
+
 import numpy as np
 import pandas as pd
 
@@ -47,6 +50,11 @@ HORIZON_PARAMS = {
            'tilt': {'momentum': 1.3, 'mean_reversion': 0.6}},
 }
 
+# The hand-set prior. Fifteen numbers chosen by judgement, never validated.
+# regime_calibrate.py estimates a shrunk version of this table from the data
+# and writes it to results/regime_weights.json; load_calibrated_weights()
+# picks it up if it is there. Until then this is what runs, and the README's
+# caveat about it stands.
 REGIME_WEIGHTS = {
     'trending':       {'trend': 0.32, 'momentum': 0.28, 'mean_reversion': 0.08,
                        'volume_flow': 0.17, 'quality': 0.15},
@@ -56,7 +64,47 @@ REGIME_WEIGHTS = {
                        'volume_flow': 0.18, 'quality': 0.20},
 }
 
+# What score_at actually uses. Swapped wholesale rather than mutated so a
+# backtest can restore the prior and compare like for like.
+ACTIVE_WEIGHTS = {k: dict(v) for k, v in REGIME_WEIGHTS.items()}
+
+CALIBRATED_WEIGHTS_PATH = os.path.join('results', 'regime_weights.json')
+
 MIN_BARS = 30
+
+
+def set_regime_weights(weights=None):
+    """Install a weight table (None restores the hand-set prior)."""
+    global ACTIVE_WEIGHTS
+    if weights is None:
+        ACTIVE_WEIGHTS = {k: dict(v) for k, v in REGIME_WEIGHTS.items()}
+    else:
+        ACTIVE_WEIGHTS = {k: dict(v) for k, v in weights.items()}
+    return ACTIVE_WEIGHTS
+
+
+def load_calibrated_weights(path=CALIBRATED_WEIGHTS_PATH, quiet=True):
+    """Install calibrated per-state weights if the file exists.
+
+    Returns the table in use. Missing or malformed files leave the prior in
+    place rather than failing the scan - a dashboard that cannot start
+    because a calibration artifact is stale is worse than one running on the
+    documented default.
+    """
+    try:
+        with open(path) as f:
+            payload = json.load(f)
+    except (OSError, ValueError):
+        return ACTIVE_WEIGHTS
+    table = payload.get('weights') if isinstance(payload, dict) else None
+    if not isinstance(table, dict):
+        return ACTIVE_WEIGHTS
+    needed = set(REGIME_WEIGHTS['mixed'])
+    if not all(isinstance(v, dict) and needed <= set(v) for v in table.values()):
+        if not quiet:
+            print(f"{path}: unexpected shape, keeping the hand-set prior")
+        return ACTIVE_WEIGHTS
+    return set_regime_weights(table)
 
 
 def _val(series, i):
@@ -290,7 +338,7 @@ class SymbolAnalyzer:
             'quality': round(quality, 3),
         }
 
-        weights = REGIME_WEIGHTS[trend_regime]
+        weights = ACTIVE_WEIGHTS[trend_regime]
         tilt = p.get('tilt')
         if tilt:
             weights = {k: w * tilt.get(k, 1.0) for k, w in weights.items()}
