@@ -52,6 +52,12 @@ from data_store import DataStore
 SLEEVES = STRATEGIES[1:]  # everything except 'composite'
 OUT_PATH = os.path.join('results', 'regime_weights.json')
 
+# How much validation Sharpe a calibrated table may give up while still
+# counting as a win. Set below 1.0 only because Sharpe on a few dozen
+# held-out rebalances is itself noisy; it is not licence to trade real
+# portfolio quality for a marginally better ranking.
+SHARPE_TOLERANCE = 0.95
+
 
 def collect_samples(analyzers, calendar, period, step, start, end,
                     labels_by_symbol=None):
@@ -253,11 +259,32 @@ def main():
                   'period': args.period, 'step': args.step},
                  {'prior_val_ic': prior_val, 'calibrated_val_ic': cal_val})
 
-    won = (prior_val is not None and cal_val is not None and cal_val > prior_val)
+    # Winning means better ranking AND no worse portfolio. Mean IC alone is
+    # too loose a test: a table can order names slightly better and still
+    # build a worse book, which is what the first 15-year run did (IC
+    # +0.0174 vs +0.0090, Sharpe 1.57 vs 1.73). Since the README's own
+    # conclusion is that this system's value is portfolio construction
+    # rather than ranking, a table that trades Sharpe for IC is not an
+    # improvement to the thing that actually works.
+    prior_sr = ((results[('prior', 'validation')]['stats'] or {})
+                .get('sharpe'))
+    cal_sr = ((results[('calibrated', 'validation')]['stats'] or {})
+              .get('sharpe'))
+    ic_better = (prior_val is not None and cal_val is not None
+                 and cal_val > prior_val)
+    sharpe_ok = (prior_sr is None or cal_sr is None
+                 or cal_sr >= prior_sr * SHARPE_TOLERANCE)
+    won = bool(ic_better and sharpe_ok)
+
     print()
     if won:
         print(f"  calibrated table beat the prior out of sample "
-              f"({cal_val:+.4f} vs {prior_val:+.4f} mean IC)")
+              f"({cal_val:+.4f} vs {prior_val:+.4f} mean IC, "
+              f"Sharpe {cal_sr} vs {prior_sr})")
+    elif ic_better and not sharpe_ok:
+        print(f"  calibrated table ranked better ({cal_val:+.4f} vs "
+              f"{prior_val:+.4f} mean IC) but built a worse portfolio "
+              f"(Sharpe {cal_sr} vs {prior_sr}) - not an improvement")
     else:
         print(f"  calibrated table did NOT beat the prior out of sample "
               f"({cal_val} vs {prior_val} mean IC)")
