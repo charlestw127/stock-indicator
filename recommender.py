@@ -37,7 +37,7 @@ TIMING_PERIODS = ('1d', '1w')
 
 
 def recommend(results, store, max_names=MAX_NAMES, prev_symbols=None,
-              positions=None, base_value=None):
+              positions=None, base_value=None, market=None):
     """Build the recommended portfolio.
 
     results: a scan results dict (results['symbols'][sym][period])
@@ -45,10 +45,19 @@ def recommend(results, store, max_names=MAX_NAMES, prev_symbols=None,
     positions: the user's current positions, for the rebalance plan
     base_value: dollar base to size targets; defaults to the market value
         of the current positions
+    market: the market overlay dict; its 'exposure' scales how much of the
+        base is invested, with the remainder held as cash
     Returns a dict for the API, or None if there is nothing to recommend.
     """
     max_names = max(1, min(MAX_NAMES, int(max_names or MAX_NAMES)))
     prev_symbols = set(prev_symbols or [])
+    exposure = 1.0
+    if isinstance(market, dict):
+        try:
+            exposure = float(market.get('exposure', 1.0))
+        except (TypeError, ValueError):
+            exposure = 1.0
+    exposure = min(1.0, max(0.0, exposure))
 
     candidates = []
     for symbol, periods in (results.get('symbols') or {}).items():
@@ -133,8 +142,8 @@ def recommend(results, store, max_names=MAX_NAMES, prev_symbols=None,
             'top_signal': signals[0] if signals else None,
         }
         if base and price:
-            row['target_value'] = round(weight * base, 2)
-            row['target_shares'] = round(weight * base / price, 3)
+            row['target_value'] = round(weight * base * exposure, 2)
+            row['target_shares'] = round(weight * base * exposure / price, 3)
         holdings.append(row)
 
     out = {
@@ -146,11 +155,22 @@ def recommend(results, store, max_names=MAX_NAMES, prev_symbols=None,
             'added': sorted(set(selected) - prev_symbols) if prev_symbols else [],
             'dropped': sorted(prev_symbols - set(selected)) if prev_symbols else [],
         },
+        'exposure': round(exposure, 3),
+        'cash_weight': round((1.0 - exposure) * 100, 1),
     }
+    if exposure < 1.0:
+        out['exposure_note'] = (
+            f"{out['cash_weight']:g}% held in cash: "
+            f"{(market or {}).get('note') or 'defensive market regime'}. "
+            "Weights below are shares of the invested book. This is drawdown "
+            "control, not a forecast - it costs return in a rising tape."
+        )
     if base:
         out['rebalance'] = _rebalance_plan(
-            selected, weights, base, current_shares, current_values,
-            prices, store, from_portfolio)
+            selected, weights, base * exposure, current_shares,
+            current_values, prices, store, from_portfolio)
+        out['rebalance']['exposure'] = round(exposure, 3)
+        out['rebalance']['gross_base_value'] = round(base, 2)
     return out
 
 
