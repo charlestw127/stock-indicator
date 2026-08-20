@@ -20,6 +20,14 @@ logger = logging.getLogger('stock_app.data_store')
 DB_PATH = 'market_data.db'
 
 # how long a cached symbol stays fresh before we look for new bars
+# How much history a full refresh pulls. The weekly refresh replaces a
+# symbol's rows wholesale so adjusted prices stay consistent, which means
+# this value is also a ceiling: shortening it silently truncates the cache
+# on the next refresh. An 80-name cross-section needs every year it can
+# get - the per-date IC standard error is about 1/sqrt(79) = 0.11, so
+# statistical power comes from the number of rebalances, not the universe.
+HISTORY_PERIOD = '15y'
+
 FETCH_TTL_SECONDS = 15 * 60
 # full re-download interval, to keep adjusted prices consistent
 FULL_REFRESH_SECONDS = 7 * 24 * 3600
@@ -300,12 +308,12 @@ def _num(v):
     return float(v)
 
 
-def _yf_download(symbol, start=None):
+def _yf_download(symbol, start=None, period=HISTORY_PERIOD):
     import yfinance as yf
     if start:
         df = yf.download(symbol, start=start, auto_adjust=True, progress=False)
     else:
-        df = yf.download(symbol, period='5y', auto_adjust=True, progress=False)
+        df = yf.download(symbol, period=period, auto_adjust=True, progress=False)
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
     if df.index.tz is not None:
