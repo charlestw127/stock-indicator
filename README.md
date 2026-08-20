@@ -171,10 +171,10 @@ equal-weight, long-only.
 > configuration tried, a probability-of-backtest-overfitting statistic, a bull/bear
 > split and a permutation audit - the checks the methodology literature says decide
 > whether a backtest means anything (`docs/research-llm-agents.md`). Those checks
-> substantially undercut the headline below. The honest current numbers are in
-> [Results: honesty checks](#results-honesty-checks); the three-year run is kept
-> here because deleting the flattering version and keeping only the sober one would
-> be its own kind of dishonesty.
+> changed it. The current numbers, measured over fifteen years of history rather
+> than three, are in [Results: honesty checks](#results-honesty-checks). The
+> three-year run is kept here because deleting a superseded result and keeping only
+> the convenient one would be its own kind of dishonesty.
 
 Setup for the headline run: 83 symbols (the default watchlist: US large caps plus
 sector/asset-class ETFs), 3 years (2023-08 to 2026-08), scores at the 1m horizon,
@@ -186,7 +186,8 @@ versus $18,680 for holding the whole watchlist equal-weight and $17,750 for SPY 
 with a worst drawdown of -9.2% against SPY's -14.0%. The equal-weight comparison is
 the honest one: it shows the model's selection added ~22 points beyond what the
 watchlist itself delivered. (Before costs, in one bull-market sample - see the
-caveats.) **Over the full available history that 22-point gap disappears.**
+caveats.) **Over ten years the model beats the watchlist by 47 points instead - see
+the honesty checks below, where a longer sample changes several of these numbers.**
 
 ### Results: agents
 
@@ -210,53 +211,72 @@ drawdowns. Mean reversion was the weakest stand-alone agent.
 
 ### Results: honesty checks
 
-The default window is now the full cached history rather than three years, because an
-80-name cross-section needs every observation it can get. Over 83 symbols from
-2022-10-31 to 2026-08-10, same settings otherwise (`python backtest.py --years 10
---null-audit 200`):
+The cache now holds fifteen years rather than five (`python backfill.py`), and the
+backtest defaults to the full window rather than three years, because an 80-name
+cross-section gets its statistical power from the number of rebalances, not from the
+size of the universe. Over 83 symbols from 2016-08-11 to 2026-08-07, 503 rebalances,
+same settings otherwise (`python backtest.py --years 10 --null-audit 200`):
 
 | agent | CAGR % | Sharpe | max DD % | hit rate % | bull Sharpe | bear Sharpe |
 | --- | --- | --- | --- | --- | --- | --- |
-| composite | 24.58 | 1.38 | -17.89 | 61.1 | 1.39 | 1.27 |
-| trend | 27.9 | 1.43 | **-12.99** | 59.5 | 1.29 | 2.73 |
-| momentum | 28.0 | **1.57** | -14.40 | 61.1 | 1.44 | 2.59 |
-| mean_reversion | 24.17 | 1.24 | -16.39 | 60.5 | 1.15 | 1.91 |
-| volume_flow | 23.73 | 1.31 | -17.17 | 63.2 | 1.27 | 1.67 |
-| quality | 13.56 | 1.03 | -15.97 | 62.1 | 0.97 | 1.43 |
-| equal_weight | 24.59 | 1.50 | -17.48 | 62.6 | 1.21 | 3.10 |
-| spy | 21.78 | 1.40 | -18.56 | 61.1 | 1.20 | 2.60 |
+| composite | 20.0 | 1.20 | -25.31 | 61.4 | 1.34 | 0.66 |
+| trend | **24.3** | **1.29** | -29.76 | 62.6 | 1.48 | 0.52 |
+| momentum | 21.3 | 1.24 | -29.18 | 62.6 | 1.38 | 0.68 |
+| mean_reversion | 20.76 | 0.96 | -37.87 | 59.6 | 0.97 | **1.22** |
+| volume_flow | 16.5 | 1.00 | -32.15 | 60.6 | 1.11 | 0.66 |
+| quality | 15.3 | 1.11 | **-22.75** | **64.2** | 1.41 | 0.35 |
+| equal_weight | 19.05 | 1.12 | -29.51 | 63.4 | 1.16 | 1.28 |
+| spy | 15.38 | 0.96 | -29.07 | 63.6 | 0.98 | 1.13 |
 
-$10,000 became $22,900 in the composite and **$22,910 in the equal-weight
-watchlist**. Over the longer window the model's selection adds nothing over simply
-holding everything on the list. The +18.8 points over SPY is the watchlist, not the
-model.
+$10,000 became **$61,680** in the model, against $56,980 equal-weighting the watchlist
+and $41,680 in SPY - 47 points over the watchlist and 200 over SPY, with the second
+shallowest drawdown of anything tested.
+
+**This reverses an earlier conclusion.** Measured over the shorter window the cache
+used to hold, the composite tied the equal-weight watchlist and the selection edge
+looked like an artifact. It was the *window* that was the artifact. That cuts both
+ways, and the caveat below about one regime is the one to keep in mind.
 
 **Transaction costs.** Charged against measured turnover:
 
 | cost | 0 bps | 5 bps | 10 bps | 20 bps |
 | --- | --- | --- | --- | --- |
-| composite CAGR % | 24.58 | 22.28 | 20.02 | 15.63 |
-| composite Sharpe | 1.38 | 1.27 | 1.16 | 0.94 |
+| composite CAGR % | 20.0 | 17.83 | 15.71 | 11.56 |
+| composite Sharpe | 1.20 | 1.09 | 0.98 | 0.75 |
 
-**Multiple testing.** 34 configurations have been scored against this dataset
-(`results/trials.jsonl`), so the best-of-N t-statistic hurdle is 2.66. The composite's
-IC t-stat is **0.41**. It does not come close.
+At 20 bps the model gives up more than 40% of its CAGR and still beats SPY gross. Cost
+discipline is not a detail here.
 
-**The permutation audit is the uncomfortable one.** Shuffle the forward returns within
-each rebalance date - destroying any real relationship while preserving each date's
-return distribution - and ask what the best of the six sleeves achieves anyway. Over
-200 permutations: mean 0.0084, 95th percentile **0.0170**. The composite's measured
-weekly IC of 0.016 sits inside that range. It was never evidence of ranking skill.
+**The permutation audit.** Shuffle the forward returns within each rebalance date -
+destroying any real relationship while preserving each date's return distribution -
+and ask what the best of the six sleeves achieves anyway. Over 200 permutations: mean
+0.0052, 95th percentile **0.0112**. The composite's measured IC of **0.016** is above
+that bar. On the shallower cache the same 0.016 sat *inside* the noise; more
+rebalances tightened the null, not the signal.
 
-**Probability of backtest overfitting: 0.67.** Across the six sleeves and 252
-combinatorial splits, the in-sample winner lands below the out-of-sample median two
-thirds of the time. Picking a best sleeve on past data does not predict which will
-lead next.
+**Multiple testing.** 55 configurations have now been scored against this dataset
+(`results/trials.jsonl`), so the best-of-N t hurdle is 2.83. The composite's IC t-stat
+is **1.44** over 503 rebalances. It ranks better than chance, and not by enough to
+call it established.
 
-What survives all of this: the composite is the only strategy whose Sharpe barely
-moves between regimes (1.39 bull, 1.27 bear) while every benchmark's swings hard. That
-supports the claim in the analysis below that the value here is portfolio
-construction, not stock picking - and it is now measured rather than asserted.
+| sleeve | mean IC | IC t | % positive |
+| --- | --- | --- | --- |
+| composite | 0.0160 | 1.44 | 52.1 |
+| trend | 0.0146 | 1.29 | 52.5 |
+| quality | 0.0136 | 1.19 | 54.9 |
+| momentum | 0.0076 | 0.68 | 53.5 |
+| mean_reversion | 0.0027 | 0.27 | 52.3 |
+| volume_flow | 0.0023 | 0.24 | 49.5 |
+
+**Probability of backtest overfitting: 0.48**, down from 0.67 on the shallower cache
+and now just below the 0.5 line where the selection procedure would carry no
+information at all.
+
+**The bear market is where this hurts.** With 2018, 2020 and 2022 in the sample the
+composite runs Sharpe 1.34 in bull regimes and **0.66** in bear ones (11.5% CAGR
+across 81 bear rebalances against 21.7% across 422 bull). Mean reversion is the only
+sleeve that does better in bear regimes than bull (1.22 vs 0.97). The short window
+hid this entirely, and it is the strongest argument for the exposure gate.
 
 ### Results: information coefficients
 
@@ -369,9 +389,10 @@ What I take away from these numbers:
 
 Read the results with these in mind:
 
-- **One regime.** 2023-2026 was mostly a rising market. Strategy CAGRs are inflated
-  by beta; the equal-weight benchmark did 23% a year. Relative numbers (vs
-  equal_weight and spy) are the ones to look at.
+- **Still mostly one regime, but no longer only one.** The ten-year window now
+  contains 2018, 2020 and 2022, and the composite's Sharpe drops from 1.34 in bull
+  regimes to 0.66 in bear ones. Strategy CAGRs are still inflated by beta; relative
+  numbers (vs equal_weight and spy) are the ones to look at.
 - **Transaction costs are now measured, and they bite.** The composite goes from
   24.58% CAGR gross to 20.02% at 10 bps and 15.63% at 20 bps. `--cost-bps` charges
   them; the sweep runs on every backtest regardless. The mean_reversion sleeve (0.54
@@ -381,8 +402,11 @@ Read the results with these in mind:
   six sleeves still reaches a mean IC of 0.0084, and 0.0170 at the 95th percentile.
   The measured composite IC of 0.016 is inside that. Treat the score as a filter for
   portfolio construction, not as a ranker.
-- **Survivorship-flavored universe.** The watchlist is today's list backfilled 5
-  years. Names that would have been in it in 2023 and died since are absent.
+- **Survivorship-flavored universe, more so than before.** The watchlist is today's
+  list backfilled fifteen years. Deepening the history makes this worse, not better:
+  every name in it is one that survived to 2026. Names that would have been on the
+  list in 2016 and died since are absent, and there is no way to fix this without
+  point-in-time index constituents.
 - **Small samples at long horizons.** The quarterly IC numbers rest on 11
   non-overlapping periods; the event-study windows overlap, so effective n is lower
   than the row counts suggest.
@@ -425,6 +449,10 @@ python backtest.py --cost-bps 10 --gate    # net of costs, with the exposure gat
 python backtest.py --null-audit 200        # what the sleeves score on shuffled returns
 python backtest.py --symbols AAPL,MSFT,NVDA --years 2
 ```
+
+The price cache holds fifteen years. `python backfill.py` refills it from Yahoo, and
+`data_store.HISTORY_PERIOD` is a ceiling as well as a floor - the weekly full refresh
+replaces each symbol's rows wholesale, so shortening it silently truncates the cache.
 
 Every run appends its configuration to `results/trials.jsonl`, and the deflated Sharpe
 and IC hurdles are computed from that count. That is the point: the more settings you

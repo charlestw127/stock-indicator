@@ -10,13 +10,17 @@ there out-of-sample evidence, and would it survive in an 80-name daily-bar unive
 with no lookahead?
 
 **Implementation status.** Items 1, 2, 3, 4, 6 and 7 of the build order below are
-implemented and tested; see [What was built](#what-was-built) for the modules, the
-commands and the first results. The short version of those results: applying the
-methodology upgrades cost the model most of its headline claim. Over the full
-available window the composite ties the equal-weight watchlist rather than beating it
-by 22 points, its information coefficient sits inside the range obtainable on
-shuffled data, and the probability of backtest overfitting across the six sleeves is
-0.67. That is the survey working as intended.
+implemented and tested, and the price cache has been deepened from five years to
+fifteen; see [What was built](#what-was-built) for the modules, the commands and the
+results. The short version: the largest single improvement was the download, not any
+of the modelling. Over ten years the composite beats the equal-weight watchlist by 47
+points, its information coefficient clears what shuffled data produces, and the
+probability of backtest overfitting fell from 0.67 to 0.48 - but its IC t-stat of
+1.44 still does not clear the multiple-testing hurdle, costs remove 40% of the CAGR
+at 20 bps, and its Sharpe halves in bear regimes. An earlier pass on the five-year
+cache concluded the selection edge had vanished entirely; that conclusion was an
+artifact of the window, which is itself the most useful thing this exercise
+demonstrated.
 
 ## The short version
 
@@ -62,11 +66,18 @@ shuffled data, and the probability of backtest overfitting across the six sleeve
    Python check failed. The 2026 explainability papers (Geng et al.; Zandi et al.)
    show LLMs reproduce a supplied ranking reliably but get the direction of effects
    wrong when left to infer them, so the pipeline design matters more than the model.
-7. **The backtester is missing the things the methodology literature says matter
+7. **The backtester was missing the things the methodology literature says matter
    most**: transaction costs, a deflated t-stat that counts every configuration
-   tried, probability of backtest overfitting, a bull/bear split, and an append-only
-   forward log. These are cheap and they are also the prerequisites for any of the
-   experiments above to mean anything.
+   tried, probability of backtest overfitting, a bull/bear split, and a permutation
+   audit. They were cheap to add and they are the prerequisites for any of the
+   experiments above to mean anything. They are now in `evaluation.py`, and they
+   promptly overturned one headline claim and then, once the data was deep enough,
+   partly restored it.
+8. **Before any of it, get more data.** At N=80 the per-date IC standard error is
+   about 0.11, so statistical power comes from the number of rebalances rather than
+   the size of the cross-section. Going from five years of daily bars to fifteen
+   changed more conclusions than every modelling change attempted here combined, and
+   cost one download. This should have been the first item, not an afterthought.
 
 ## Where the field stands
 
@@ -538,7 +549,9 @@ at the end of this section. The test suite went from 40 tests to 146.
 | [llm.py](../llm.py) | Anthropic wrapper; every feature degrades to a deterministic half without it | new |
 | [checks.py](../checks.py) | seven deterministic portfolio checks plus an LLM critic that cannot change them | new |
 | [brief.py](../brief.py) | grounded narration with per-sentence verification | new |
+| [backfill.py](../backfill.py) | pulls fifteen years of daily bars for the whole watchlist | new |
 | [backtest.py](../backtest.py) | costs, bull/bear split, diagnostics, 10-year default, trial logging | changed |
+| [data_store.py](../data_store.py) | `HISTORY_PERIOD`, so a full refresh stops truncating to five years | changed |
 | [market.py](../market.py) | `classify_risk` / `exposure_scalar` split out for point-in-time use | changed |
 | [quant_engine.py](../quant_engine.py) | `ACTIVE_WEIGHTS` + `load_calibrated_weights()` | changed |
 | [recommender.py](../recommender.py) | exposure gating, cash weight, gated rebalance plan | changed |
@@ -546,91 +559,116 @@ at the end of this section. The test suite went from 40 tests to 146.
 
 ### What the honesty checks did to the headline result
 
-Running the hardened backtester over the full cached history (83 symbols,
-2022-10-31 to 2026-08-10, 1m scores, 5-day rebalance, top 20%):
+The first pass ran on the five years of daily bars the cache then held, and concluded
+the composite's selection edge had evaporated. That conclusion was wrong, and wrong in
+an instructive way: the window was the artifact, not the edge. `backfill.py` took the
+cache to fifteen years and `data_store.HISTORY_PERIOD` now sets that as a floor and a
+ceiling both, since the weekly full refresh replaces rows wholesale and a shorter
+setting would silently truncate.
+
+Over 83 symbols from 2016-08-11 to 2026-08-07, 503 rebalances, 1m scores, 5-day
+rebalance, top 20%:
 
 ```
 strategy           CAGR%  Sharpe   MaxDD%   Hit%  bull SR  bear SR
-composite          24.58    1.38   -17.89   61.1     1.39     1.27
-trend               27.9    1.43   -12.99   59.5     1.29     2.73
-momentum            28.0    1.57    -14.4   61.1     1.44     2.59
-equal_weight       24.59     1.5   -17.48   62.6     1.21      3.1
-spy                21.78     1.4   -18.56   61.1      1.2      2.6
+composite           20.0     1.2   -25.31   61.4     1.34     0.66
+trend               24.3    1.29   -29.76   62.6     1.48     0.52
+momentum            21.3    1.24   -29.18   62.6     1.38     0.68
+mean_reversion     20.76    0.96   -37.87   59.6     0.97     1.22
+quality             15.3    1.11   -22.75   64.2     1.41     0.35
+equal_weight       19.05    1.12   -29.51   63.4     1.16     1.28
+spy                15.38    0.96   -29.07   63.6     0.98     1.13
 ```
 
-Four things follow, none of them comfortable:
+Five findings, in descending order of how much they should change behaviour:
 
-1. **The selection edge is gone over the longer window.** $10,000 became $22,900 in
-   the composite and $22,910 in the equal-weight watchlist. The README's three-year
-   run showed the model adding ~22 points over the watchlist; over the full window it
-   adds nothing. The edge over SPY (+18.8 points) is the watchlist, not the model.
-2. **Costs are decisive.** The composite goes 24.58% CAGR at 0 bps, 22.28% at 5,
-   20.02% at 10 and 15.63% at 20. At 10 bps it no longer beats the equal-weight
-   benchmark's gross number.
-3. **The IC is inside the noise.** Composite IC t-stat 0.41 against a best-of-34
-   hurdle of 2.66. More pointedly, the permutation audit shuffles forward returns
-   within each date and asks what the *best of the six sleeves* achieves on data with
-   no signal in it: mean 0.0084, and 0.0170 at the 95th percentile over 200
-   permutations. The README's headline weekly composite IC of 0.016 is inside that
-   range. It was never evidence of ranking skill.
-4. **PBO is 0.67.** Across the six sleeves and 252 combinatorial splits, the
-   in-sample winner lands below the out-of-sample median two thirds of the time. The
-   procedure that picks a best sleeve is not informative.
+1. **The selection edge is real over ten years.** $10,000 became $61,680 in the
+   composite against $56,980 equal-weighting the watchlist and $41,680 in SPY: 47
+   points over the watchlist, 200 over SPY, with the second shallowest drawdown of
+   anything tested (-25.31%). Over the shallower cache these two tied exactly.
+2. **The bear market is the weak point, and the short window hid it.** With 2018,
+   2020 and 2022 in sample, the composite runs Sharpe 1.34 in bull regimes and
+   **0.66** in bear ones (11.5% CAGR over 81 bear rebalances against 21.7% over 422
+   bull). Mean reversion is the only sleeve that prefers bear regimes (1.22 vs 0.97).
+   This is the strongest argument for the exposure gate, and it is exactly the
+   FinSABER finding - strategies that look fine in a rising tape and fall apart in a
+   falling one - showing up in a small live system.
+3. **Costs take roughly 40% of the CAGR.** 20.0% gross, 17.83% at 5 bps, 15.71% at 10,
+   11.56% at 20.
+4. **The ranking now clears the shuffle bar but not the multiple-testing bar.** The
+   permutation audit puts the best-of-six-sleeves IC on signal-free data at 0.0052
+   mean and 0.0112 at the 95th percentile over 200 permutations; the composite's
+   measured 0.016 is above it. But its t-stat is 1.44 against a best-of-55 hurdle of
+   2.83. Note what moved: the same 0.016 IC that sat *inside* the noise on the
+   shallower cache is now outside it, because 503 rebalances tightened the null. The
+   signal did not improve; the measurement did.
+5. **PBO fell from 0.67 to 0.48**, just below the line where the procedure that picks
+   a best sleeve would carry no information at all.
 
-The one thing that survives: the bull/bear split shows the composite is the *only*
-strategy whose Sharpe barely moves between regimes (1.39 bull, 1.27 bear) while every
-benchmark's swings wildly. That is consistent with the README's own claim that the
-value is in portfolio construction rather than stock picking — and it is now measured
-rather than asserted.
+The lesson for this project is the one the report argued for on statistical grounds
+before any of it was run: at N=80 the binding constraint is the number of
+rebalances, and a download was worth more than any modelling change attempted here.
 
-### The regime experiment came back negative
+### The regime experiment: better ranking, worse portfolio
 
-`python regime_calibrate.py` splits the history, estimates per-state sleeve weights on
-discovery, and compares against the hand table on a held-out window. On a 26-symbol
-subset with 1.5 years held out:
+On the shallow cache the calibration failed outright - it looked spectacular on
+discovery (IC 0.047 vs 0.007) and came out worse on validation (-0.088 vs -0.056),
+textbook in-sample fitting, and the gate refused it.
 
-| table | split | mean IC | IC t | CAGR% | Sharpe |
-| --- | --- | --- | --- | --- | --- |
-| prior | discovery | 0.0069 | 0.11 | 15.52 | 0.88 |
-| calibrated | discovery | 0.0473 | 0.94 | 34.09 | 1.52 |
-| prior | validation | -0.056 | -0.97 | 23.12 | 0.84 |
-| calibrated | validation | **-0.088** | -1.44 | 6.80 | 0.44 |
+With fifteen years and three years held out it is a subtler failure:
 
-The calibrated table looks like a large win on discovery — nearly 7x the IC, more than
-double the CAGR — and is *worse* than the hand-set prior out of sample. This is
-textbook in-sample fitting, and it is the reason the script refuses to install a table
-that does not win on validation. `--apply` is a no-op unless it does. The hand-set
-fifteen numbers stay in force, now for a documented reason rather than by default.
+| table | split | mean IC | IC t | CAGR% | Sharpe | MaxDD% |
+| --- | --- | --- | --- | --- | --- | --- |
+| prior | discovery | 0.0073 | 0.36 | 17.07 | 1.23 | -21.27 |
+| calibrated | discovery | 0.0148 | 0.71 | 17.31 | 1.20 | -27.25 |
+| prior | validation | 0.0090 | 0.25 | 30.55 | **1.73** | **-12.45** |
+| calibrated | validation | **0.0174** | 0.47 | 25.78 | 1.57 | -15.48 |
+
+The calibrated table ranks names *better* out of sample - nearly double the IC - and
+builds a *worse* portfolio: lower CAGR, lower Sharpe, deeper drawdown. That exposed a
+flaw in the original gate, which tested mean IC alone and would have installed it.
+
+The gate now requires better ranking **and** no material loss of validation Sharpe
+(`SHARPE_TOLERANCE = 0.95`). Given that this system's measured value is portfolio
+construction rather than ranking, a table that trades Sharpe for IC is not an
+improvement to the part that works. With the tightened rule `--apply` is a no-op and
+the hand-set prior stays in force - the second time it has survived a serious attempt
+to replace it.
 
 The jump model itself behaves: on AAPL it produces states with 14-24 day mean run
 lengths rather than the three-day artifacts a Gaussian HMM fits to noise, and
 `test_labels_are_causal` asserts that the label at bar *i* is unchanged when later
 bars are appended.
 
-### The factor search runs, and finds nothing
+### The factor search runs, and the validation split earns its keep
 
-`python factor_search.py --propose 20` builds panels on frozen splits, asks Claude for
-expressions in the whitelisted DSL, and scores each with the same IC machinery the
-backtester uses. Without credentials it falls back to sampling the grammar directly,
-which also serves as the control: if LLM proposals are not measurably better than
-random ones, the API call is not paying for itself.
+The frozen splits were re-set once when the cache deepened - discovery to 2021-07-29
+(~8.7 years after the warm-up), validation to 2024-05-10, holdout after. Re-freezing
+because the dataset changed is legitimate; re-freezing after seeing which side of a
+boundary a favoured expression falls on is not, and the expressions scored under the
+old splits are archived as `factor_candidates_5y_cache.jsonl` rather than carried
+over, because their statistics were measured on different data.
 
-33 randomly sampled expressions produced zero survivors, with the best |t| at 2.01
-against a discovery gate of 2.5. The trial counter did its job — the best-of-N hurdle
-rose from 2.26 to 2.64 as the search continued, which is the entire point: searching
-harder raises the bar you must clear.
+On 104 discovery rebalances, 20 randomly sampled expressions produced this:
 
-The DSL is a whitelist over the AST, not a blacklist. `__import__("os").system("ls")`,
-`close.rolling(5)`, subscripts, lambdas, comprehensions, `**`, keyword arguments and
-any name outside the operand list are all rejected before evaluation, and there are
-tests for each. Expression evaluation inherits no-lookahead from the fact that every
-operand in `quant_indicators.py` is already rolling; `test_evaluate_is_causal` pins it.
+- four cleared the discovery gate at |t| between 2.71 and 3.57
+- **all four then failed validation**, at |t| between 0.53 and 0.60
+- two more were caught by the decay filter, holding under half their first-half IC
+- zero survivors
 
-**One caveat that limits this severely:** the cache holds about five years of daily
-bars, so after the 300-bar warm-up the discovery window is under two years and a
-monthly rebalance yields roughly 22 dates. Backfilling `data_store` to fifteen years
-and moving `DISCOVERY_END` earlier is the single largest improvement available, and
-costs nothing but a download.
+That is the two-stage gate doing precisely what it exists for. Noise expressions
+*will* reach |t| > 3 on a hundred rebalances - that is what the best-of-N hurdle, now
+2.83 after 55 scored expressions, is measuring - and the only thing that reliably
+kills them is a split they have never seen. Anyone reading a single-split t-statistic
+of 3.5 as a discovery should look at this table first.
+
+The DSL is a whitelist over the AST, not a blacklist. Imports, attribute access,
+subscripts, lambdas, comprehensions, exponentiation, keyword arguments and any
+unlisted name are rejected before evaluation, with a test for each. Expression
+evaluation inherits no-lookahead because every operand in `quant_indicators.py` is
+already rolling; `test_evaluate_is_causal` pins it. Without credentials the search
+samples its own grammar, which doubles as the control: if LLM proposals are not
+measurably better than random ones, the call is not paying for itself.
 
 ### The brief and the critic
 
@@ -689,6 +727,7 @@ measures it.
 ### Running it
 
 ```bash
+python backfill.py                                  # fifteen years of daily bars
 python backtest.py --years 10 --null-audit 200      # honest headline numbers
 python backtest.py --cost-bps 10 --gate             # net of costs, regime-gated
 python regime_calibrate.py --labeler jump --apply   # calibrate; installs only if it wins

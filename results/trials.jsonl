@@ -33,3 +33,27 @@
 {"hash": "fcb66d2f11e0", "config": {"job": "factor_search", "expression": "sign(ts_rank(rel_vol, 5)) * absv(ts_min(atr14, 5))", "period": "1m", "step": 10}, "metrics": {"discovery_t": 0.616}}
 {"hash": "b94b248ce01f", "config": {"period": "1m", "step": 5, "years": 5.0, "top": 0.2, "weighting": "equal", "cost_bps": 0.0, "gate": false, "n_symbols": 83}, "metrics": {"status": "started"}}
 {"hash": "b94b248ce01f", "config": {"period": "1m", "step": 5, "years": 5.0, "top": 0.2, "weighting": "equal", "cost_bps": 0.0, "gate": false, "n_symbols": 83}, "metrics": {"composite_cagr": 24.58, "composite_sharpe": 1.38, "composite_ic": 0.0069}}
+{"hash": "760478b8cd08", "config": {"period": "1m", "step": 5, "years": 10.0, "top": 0.2, "weighting": "equal", "cost_bps": 0.0, "gate": false, "n_symbols": 83}, "metrics": {"status": "started"}}
+{"hash": "760478b8cd08", "config": {"period": "1m", "step": 5, "years": 10.0, "top": 0.2, "weighting": "equal", "cost_bps": 0.0, "gate": false, "n_symbols": 83}, "metrics": {"composite_cagr": 20.0, "composite_sharpe": 1.2, "composite_ic": 0.016}}
+{"hash": "7f2808bc77e6", "config": {"job": "regime_calibrate", "labeler": "classifier", "states": 3, "shrinkage": 0.5, "period": "1m", "step": 21}, "metrics": {"prior_val_ic": 0.009, "calibrated_val_ic": 0.0174}}
+{"hash": "7f2808bc77e6", "config": {"job": "regime_calibrate", "labeler": "classifier", "states": 3, "shrinkage": 0.5, "period": "1m", "step": 21}, "metrics": {"prior_val_ic": 0.009, "calibrated_val_ic": 0.0174}}
+{"hash": "77b5b84a5013", "config": {"job": "factor_search", "expression": "ts_delta(high, 3) + absv(zscore(don_pos, 21))", "period": "1m", "step": 21}, "metrics": {"discovery_t": -0.396}}
+{"hash": "17664de90d33", "config": {"job": "factor_search", "expression": "logv(mfi14) * stoch_k", "period": "1m", "step": 21}, "metrics": {"discovery_t": -0.98}}
+{"hash": "022526599fa7", "config": {"job": "factor_search", "expression": "mom_12_1 + tanh(ts_sum(mfi14, 3))", "period": "1m", "step": 21}, "metrics": {"discovery_t": 2.708}}
+{"hash": "a5aa1c9385f7", "config": {"job": "factor_search", "expression": "ts_std(ts_min(rel_vol, 21), 252) - sign(ts_rank(dist_52, 20))", "period": "1m", "step": 21}, "metrics": {"discovery_t": 0.447}}
+{"hash": "e90c6d34f973", "config": {"job": "factor_search", "expression": "tanh(ts_max(rv21, 63)) + logv(ts_rank(rel_vol, 63))", "period": "1m", "step": 21}, "metrics": {"discovery_t": -2.885}}
+{"hash": "7a817d671390", "config": {"job": "factor_search", "expression": "ts_rank(sign(dist_52), 42) * kama10", "period": "1m", "step": 21}, "metrics": {"discovery_t": -3.566}}
+{"hash": "d64fde008dd8", "config": {"job": "factor_search", "expression": "sign(tanh(dist_52)) + kama10", "period": "1m", "step": 21}, "metrics": {"discovery_t": -3.085}}
+{"hash": "a21d4f1639b1", "config": {"job": "factor_search", "expression": "sign(macd_hist) + ts_mean(stoch_d, 3)", "period": "1m", "step": 21}, "metrics": {"discovery_t": -1.516}}
+{"hash": "0c3da3fc8119", "config": {"job": "factor_search", "expression": "ts_delta(zscore(ret1, 3), 20) * obv_z", "period": "1m", "step": 21}, "metrics": {"discovery_t": -1.528}}
+{"hash": "ff473b4e4b3f", "config": {"job": "factor_search", "expression": "sign(sign(high)) * ts_max(absv(stoch_d), 126)", "period": "1m", "step": 21}, "metrics": {"discovery_t": -0.236}}
+{"hash": "386515e19696", "config": {"job": "factor_search", "expression": "ts_max(absv(atr14), 63) + logv(stoch_d)", "period": "1m", "step": 21}, "metrics": {"discovery_t": -0.596}}
+{"hash": "0eeb04f3afea", "config": {"job": "factor_search", "expression": "absv(logv(close)) - logv(adx14)", "period": "1m", "step": 21}, "metrics": {"discovery_t": -3.108}}
+{"hash": "8e8f7ae029d6", "config": {"job": "factor_search", "expression": "logv(tanh(obv_z)) * tanh(zscore(don_pos, 20))", "period": "1m", "step": 21}, "metrics": {"discovery_t": 1.019}}
+{"hash": "fb5b7affb094", "config": {"job": "factor_search", "expression": "stoch_d - tanh(rel_vol)", "period": "1m", "step": 21}, "metrics": {"discovery_t": -1.452}}
+{"hash": "096325e03843", "config": {"job": "factor_search", "expression": "mom_12_1 + tanh(absv(obv_z))", "period": "1m", "step": 21}, "metrics": {"discovery_t": 1.68}}
+{"hash": "9f319ce684cf", "config": {"job": "factor_search", "expression": "don_pos + ts_max(tanh(vwap_dev), 10)", "period": "1m", "step": 21}, "metrics": {"discovery_t": -0.245}}
+{"hash": "a80b48e0a483", "config": {"job": "factor_search", "expression": "tanh(ret1) - pct_change(ts_delta(high, 42), 21)", "period": "1m", "step": 21}, "metrics": {"discovery_t": -0.647}}
+{"hash": "51d39b6f57ef", "config": {"job": "factor_search", "expression": "ts_sum(pct_change(don_pos, 20), 3) / ts_sum(logv(volume), 3)", "period": "1m", "step": 21}, "metrics": {"discovery_t": -0.425}}
+{"hash": "94aaf483db91", "config": {"job": "factor_search", "expression": "rel_vol + pct_change(tanh(close), 3)", "period": "1m", "step": 21}, "metrics": {"discovery_t": -3.236}}
+{"hash": "a7d3e6f2dfb4", "config": {"job": "factor_search", "expression": "ts_sum(sign(macd_hist), 5) - sign(ts_mean(rv21, 21))", "period": "1m", "step": 21}, "metrics": {"discovery_t": -1.8}}

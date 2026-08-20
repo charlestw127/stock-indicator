@@ -1,7 +1,7 @@
 {
   "survivors": [],
-  "n_trials": 33,
-  "hurdle_t": 2.644,
+  "n_trials": 55,
+  "hurdle_t": 2.831,
   "gate": {
     "discovery_t": 2.5,
     "validation_t": 1.5,
@@ -9,6 +9,6 @@
     "max_sleeve_corr": 0.6,
     "min_positive_dates": 0.55
   },
-  "discovery_end": "2024-08-30",
-  "validation_end": "2025-08-18"
+  "discovery_end": "2021-07-29",
+  "validation_end": "2024-05-10"
 }

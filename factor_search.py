@@ -65,15 +65,18 @@ SURVIVORS_PATH = os.path.join('results', 'factor_survivors.json')
 
 # Frozen before any proposal is made. Change these and the gate is void.
 #
-# These fit the roughly five years of daily bars data_store currently holds
-# (2021-08 onward), minus the 300-bar warm-up every analyzer needs. That is
-# thin: discovery gets under two years, so a monthly rebalance yields ~22
-# dates and the IC t-statistic is correspondingly weak. Backfilling the
-# cache to fifteen years and moving these dates earlier is the single
-# largest improvement available to this search, and costs nothing but a
-# download. Until then, treat survivors as leads rather than findings.
-DISCOVERY_END = '2024-08-30'
-VALIDATION_END = '2025-08-18'      # holdout is everything after this
+# Re-set once, when backfill.py took the cache from five years to fifteen.
+# The previous values (2024-08-30 / 2025-08-18) were chosen to fit the
+# shallower cache and gave discovery under two years, about 22 monthly
+# rebalances. Any expression scored under those splits was measured on a
+# different dataset and its statistics do not carry over; results/
+# factor_candidates.jsonl keeps them for the record, not as evidence.
+#
+# Re-freezing because the underlying data changed is legitimate. Re-freezing
+# after seeing which side of a boundary a favoured expression falls on is
+# not, and is the single easiest way to void everything below.
+DISCOVERY_END = '2021-07-29'       # ~8.7y of discovery after the warm-up
+VALIDATION_END = '2024-05-10'      # ~2.8y; holdout is everything after this
 
 MAX_DEPTH = 4
 WINDOWS = [3, 5, 10, 20, 21, 42, 63, 126, 252]
